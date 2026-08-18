@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Checklist\ChecklistController;
+use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MasterData\AreaController;
@@ -22,9 +23,15 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('home', HomeController::class)->name('home');
 
-    // Checklist (2F — STANDARD mode). Fill = authed user (PIC); submit = write-guard applies.
+    // Checklist — STANDARD (2F).
     Route::get('compliance/checklist/{inventory}/fill', [ChecklistController::class, 'fill'])->name('compliance.checklist.fill');
     Route::post('compliance/checklist/{inventory}', [ChecklistController::class, 'store'])->name('compliance.checklist.store');
+
+    // Checklist — GRID (2G, official fast/mass entry).
+    Route::get('compliance/checklist-grid/{itemType}', [GridChecklistController::class, 'show'])->name('compliance.checklist.grid');
+    Route::post('compliance/checklist-grid/{itemType}/set', [GridChecklistController::class, 'set'])->name('compliance.checklist.grid.set');
+    Route::post('compliance/checklist-grid/{itemType}/mark-all', [GridChecklistController::class, 'markAll'])->name('compliance.checklist.grid.mark-all');
+    Route::post('compliance/checklist-grid/{itemType}/clear', [GridChecklistController::class, 'clear'])->name('compliance.checklist.grid.clear');
 
     // Compliance Inventory (2E).
     Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');
