@@ -49,20 +49,25 @@ class LegacyImporter
     {
         foreach ($this->rows('users', 'users') as $row) {
             $this->write('users', function () use ($row) {
-                $user = User::withoutEvents(fn () => User::updateOrCreate(
-                    ['username' => (string) $row->username],
-                    [
-                        'name' => $row->name ?? $row->username,
-                        'email' => $row->email ?? null,
-                        'role' => $this->mapRole((string) ($row->role ?? 'staff')),
-                        'permission' => in_array($row->permission ?? 'read', ['read', 'write'], true) ? $row->permission : 'read',
-                        'status' => ($row->status ?? 'active') === 'active' ? 'active' : 'inactive',
-                    ]
-                ));
-                // CARRY the legacy bcrypt hash EXACTLY via raw query — bypass the 'hashed' cast
-                // (which would re-hash it and break the user's login).
-                DB::table('users')->where('id', $user->id)->update(['password' => (string) ($row->password ?? '')]);
-                $this->mapId('users', $row->id ?? 0, $user->id);
+                $username = (string) $row->username;
+
+                // Query-builder upsert (NOT the model) so the legacy bcrypt password hash is
+                // carried EXACTLY (the model's 'hashed' cast would re-hash and break logins),
+                // and the NOT NULL users.password column is satisfied on insert.
+                DB::table('users')->upsert([
+                    'username' => $username,
+                    'name' => $row->name ?? $username,
+                    'email' => $row->email ?? null,
+                    'password' => (string) ($row->password ?? ''),
+                    'role' => $this->mapRole((string) ($row->role ?? 'staff')),
+                    'permission' => in_array($row->permission ?? 'read', ['read', 'write'], true) ? $row->permission : 'read',
+                    'status' => ($row->status ?? 'active') === 'active' ? 'active' : 'inactive',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], ['username'], ['name', 'email', 'password', 'role', 'permission', 'status', 'updated_at']);
+
+                $userId = DB::table('users')->where('username', $username)->value('id');
+                $this->mapId('users', $row->id ?? 0, $userId);
             });
         }
     }
@@ -200,7 +205,7 @@ class LegacyImporter
             $this->write('checklist_master', function () use ($row) {
                 $itemTypeId = $this->mapped('asset_item_types', $row->item_type_id ?? 0);
                 if (! $itemTypeId) {
-                    throw new \RuntimeException("question: item_type tidak ter-resolve");
+                    throw new \RuntimeException('question: item_type tidak ter-resolve');
                 }
                 $q = ChecklistMaster::withoutEvents(fn () => ChecklistMaster::updateOrCreate(
                     ['asset_item_type_id' => $itemTypeId, 'question' => (string) $row->question],
