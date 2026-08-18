@@ -28,21 +28,25 @@ jobs:
         run: |
           set +e
           exec > ci-output.txt 2>&1
-          echo "### php -v"; php -v
-          echo "### ensure dirs"; mkdir -p database bootstrap/cache storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views storage/logs
-          echo "### composer validate"; composer validate --no-check-lock
           echo "### composer update"; composer update --prefer-dist --no-interaction --no-progress
-          echo "### prepare (sqlite)"; cp .env.example .env; sed -i 's/^DB_CONNECTION=mysql/DB_CONNECTION=sqlite/' .env; sed -i "s|^DB_DATABASE=eams|DB_DATABASE=$GITHUB_WORKSPACE/database/database.sqlite|" .env; touch database/database.sqlite; php artisan key:generate
+          echo "### prepare (sqlite)"; cp .env.example .env; sed -i 's/^DB_CONNECTION=mysql/DB_CONNECTION=sqlite/' .env; sed -i "s|^DB_DATABASE=eams|DB_DATABASE=$GITHUB_WORKSPACE/database/database.sqlite|" .env; mkdir -p database bootstrap/cache storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views storage/logs; touch database/database.sqlite; php artisan key:generate
           echo "### about"; php artisan about
-          echo "### route:list"; php artisan route:list
+          echo "### route:list (count)"; php artisan route:list | tail -n 2
           echo "### migrate"; php artisan migrate --force
-          echo "### migrate:status"; php artisan migrate:status
           echo "### test"; php artisan test; TEST_EXIT=$?
           echo "### RESULT: artisan test exit = $TEST_EXIT"
           exit $TEST_EXIT
 
-      - name: Post result to CI Status issue
+      - name: Post concise result to CI Status issue
         if: always()
-        run: gh issue comment 2 --body-file ci-output.txt
+        run: |
+          {
+            echo "**CI · $(date -u +'%Y-%m-%d %H:%M UTC') · commit ${GITHUB_SHA:0:8} · job $GITHUB_RUN_ID**";
+            echo '';
+            echo '```';
+            tail -n 90 ci-output.txt;
+            echo '```';
+          } > ci-summary.md
+          gh issue comment 2 --body-file ci-summary.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
