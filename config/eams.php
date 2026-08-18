@@ -20,10 +20,15 @@ return [
     // Logical file storage categories (Q-022).
     'storage_categories' => ['inventory', 'checklist', 'qr', 'attachments'],
 
-    /*
-    | Public paths a read-only user may still POST to (BR-42 whitelist).
-    | Matched with Request::is().
-    */
+    // Public paths a read-only user may still POST to (BR-42 whitelist).
     'write_whitelist' => ['login', 'logout', 'kuesioner', 'kuesioner/*', 'api/agent/*'],
+
+    /*
+    | Centralized upload validation (Q-026) — one definition used by every module.
+    */
+    'upload' => [
+        'max_kb' => (int) env('EAMS_UPLOAD_MAX_KB', 5120),
+        'image_mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+    ],
 
 ];

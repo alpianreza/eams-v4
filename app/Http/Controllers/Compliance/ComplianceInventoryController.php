@@ -9,7 +9,9 @@ use App\Models\AssetItemType;
 use App\Models\ComplianceInventory;
 use App\Models\InventoryCategory;
 use App\Models\User;
+use App\Services\FileStorage;
 use App\Services\QrService;
+use App\Support\Uploads\ImageUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -49,10 +51,14 @@ class ComplianceInventoryController extends Controller
         $provided = trim((string) ($data['asset_code'] ?? ''));
         $data['asset_code'] = $provided !== '' ? $provided : GenerateAssetCode::generate($category, $itemType);
 
-        $inventory = ComplianceInventory::create(collect($data)->except('pic_ids')->toArray() + ['active' => true]);
-
-        // PIC: max 2, equal, no primary — compliance_inventory_pics is the source of truth (Q-007).
+        $inventory = ComplianceInventory::create(collect($data)->except(['pic_ids', 'photo'])->toArray() + ['active' => true]);
         $inventory->pics()->sync($data['pic_ids'] ?? []);
+
+        // Inventory photo (Q-022/Q-026): stored on the configurable `inventory` disk.
+        if ($request->hasFile('photo')) {
+            $request->validate(['photo' => ImageUpload::rules()]);
+            $inventory->update(['photo' => app(FileStorage::class)->put('inventory', $request->file('photo'))]);
+        }
 
         $inventory->update(['qr_image' => app(QrService::class)->generate($inventory)]);
 
@@ -90,8 +96,14 @@ class ComplianceInventoryController extends Controller
             'pic_ids.*' => ['integer', 'exists:users,id'],
         ]);
 
-        $inventory->update(collect($data)->except('pic_ids')->toArray());
+        $inventory->update(collect($data)->except(['pic_ids', 'photo'])->toArray());
         $inventory->pics()->sync($data['pic_ids'] ?? []);
+
+        if ($request->hasFile('photo')) {
+            $request->validate(['photo' => ImageUpload::rules()]);
+            app(FileStorage::class)->delete('inventory', $inventory->photo);
+            $inventory->update(['photo' => app(FileStorage::class)->put('inventory', $request->file('photo'))]);
+        }
 
         return redirect()->route('compliance.inventory.index')->with('status', 'Inventory diperbarui.');
     }
@@ -109,7 +121,6 @@ class ComplianceInventoryController extends Controller
             'inventory_category_id' => ['required', 'exists:inventory_categories,id'],
             'asset_item_type_id' => ['required', 'exists:asset_item_types,id'],
             'area_id' => ['nullable', 'exists:areas,id'],
-            // Q-020: provided code kept exactly; duplicate is rejected (unique), never auto-renamed.
             'asset_code' => ['nullable', 'string', 'max:50', 'unique:compliance_inventories,asset_code'],
             'type_description' => ['nullable', 'string', 'max:255'],
             'specific_area' => ['nullable', 'string', 'max:255'],
