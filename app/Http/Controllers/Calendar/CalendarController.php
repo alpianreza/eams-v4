@@ -24,7 +24,8 @@ class CalendarController extends Controller
         $monthStart = Carbon::parse($month.'-01');
         $monthEnd = $monthStart->copy()->endOfMonth();
 
-        $holidays = Holiday::query()->forMonth($month)->get()->keyBy('holiday_date');
+        // holiday_date is a pure 'Y-m-d' string → prefix match for the month.
+        $holidays = Holiday::where('holiday_date', 'like', $month.'%')->get()->keyBy('holiday_date');
         $events = CalendarEvent::where('start_at', '<=', $monthEnd->copy()->endOfDay())
             ->where(function ($q) use ($monthStart) {
                 $q->whereNull('end_at')->where('start_at', '>=', $monthStart->copy()->startOfDay())
