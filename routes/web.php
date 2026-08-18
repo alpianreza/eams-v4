@@ -13,6 +13,7 @@ use App\Http\Controllers\MasterData\EmployeeController;
 use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
 use App\Http\Controllers\Report\ComplianceReportController;
+use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'));
@@ -30,6 +31,11 @@ Route::middleware('auth')->group(function () {
 
     // IT Device Monitoring (2J).
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
+
+    // Boiler & Utility daily logs (2K) — index authed; write via global write-guard.
+    Route::get('utility/{type}', [UtilityLogController::class, 'index'])->name('utility.index');
+    Route::post('utility/{type}', [UtilityLogController::class, 'store'])->name('utility.store');
+    Route::delete('utility/{type}/{id}', [UtilityLogController::class, 'destroy'])->name('utility.destroy');
 
     // Checklist — STANDARD (2F) & GRID (2G).
     Route::get('compliance/checklist/{inventory}/fill', [ChecklistController::class, 'fill'])->name('compliance.checklist.fill');
