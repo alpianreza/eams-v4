@@ -6,6 +6,7 @@ use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ItDevice\ItDeviceController;
 use App\Http\Controllers\MasterData\AreaController;
 use App\Http\Controllers\MasterData\AssetItemTypeController;
 use App\Http\Controllers\MasterData\EmployeeController;
@@ -27,6 +28,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
+    // IT Device Monitoring (2J).
+    Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
+
     // Checklist — STANDARD (2F) & GRID (2G).
     Route::get('compliance/checklist/{inventory}/fill', [ChecklistController::class, 'fill'])->name('compliance.checklist.fill');
     Route::post('compliance/checklist/{inventory}', [ChecklistController::class, 'store'])->name('compliance.checklist.store');
@@ -35,10 +39,9 @@ Route::middleware('auth')->group(function () {
     Route::post('compliance/checklist-grid/{itemType}/mark-all', [GridChecklistController::class, 'markAll'])->name('compliance.checklist.grid.mark-all');
     Route::post('compliance/checklist-grid/{itemType}/clear', [GridChecklistController::class, 'clear'])->name('compliance.checklist.grid.clear');
 
-    // Compliance report PDF (2I) — GATE access-compliance-pdf (Q-008: admin + Compliance access only).
+    // Compliance report PDF (2I) — GATE access-compliance-pdf (Q-008).
     Route::get('compliance/report/{inventory}/pdf', [ComplianceReportController::class, 'pdf'])
-        ->name('compliance.report.pdf')
-        ->middleware('can:access-compliance-pdf');
+        ->name('compliance.report.pdf')->middleware('can:access-compliance-pdf');
 
     // Compliance Inventory (2E).
     Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');

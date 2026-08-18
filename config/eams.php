@@ -1,9 +1,7 @@
 <?php
 
 /*
-|--------------------------------------------------------------------------
 | EAMS business configuration
-|--------------------------------------------------------------------------
 */
 
 return [
@@ -11,8 +9,12 @@ return [
     // Saturday holiday effective date (Q-005). NOT retroactive.
     'saturday_holiday_effective' => env('EAMS_SATURDAY_HOLIDAY_EFFECTIVE', '2026-04-01'),
 
-    // Device online threshold, seconds (Q-012). Single centralized value.
+    // Device online threshold, seconds (Q-012). Single centralized value. NOT 48h.
     'device_online_threshold_seconds' => (int) env('EAMS_DEVICE_ONLINE_THRESHOLD_SECONDS', 600),
+
+    // Agent API intervals (technical defaults, consistent with the 10-minute online rule).
+    'agent_heartbeat_interval_seconds' => (int) env('EAMS_AGENT_HEARTBEAT_INTERVAL', 300),
+    'agent_command_poll_interval_seconds' => (int) env('EAMS_AGENT_COMMAND_POLL_INTERVAL', 30),
 
     // Configurable base path for business files (Q-022).
     'files_base_path' => env('EAMS_FILES_BASE_PATH', ''),
@@ -23,9 +25,7 @@ return [
     // Public paths a read-only user may still POST to (BR-42 whitelist).
     'write_whitelist' => ['login', 'logout', 'kuesioner', 'kuesioner/*', 'api/agent/*'],
 
-    /*
-    | Centralized upload validation (Q-026) — one definition used by every module.
-    */
+    // Centralized upload validation (Q-026).
     'upload' => [
         'max_kb' => (int) env('EAMS_UPLOAD_MAX_KB', 5120),
         'image_mimes' => ['jpg', 'jpeg', 'png', 'webp'],
