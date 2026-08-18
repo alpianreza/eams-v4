@@ -12,6 +12,7 @@ use App\Http\Controllers\MasterData\AssetItemTypeController;
 use App\Http\Controllers\MasterData\EmployeeController;
 use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
+use App\Http\Controllers\Patrol\PatrolController;
 use App\Http\Controllers\Report\ComplianceReportController;
 use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
@@ -26,13 +27,18 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('home', HomeController::class)->name('home');
-
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
-    // IT Device Monitoring (2J).
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
 
-    // Boiler & Utility daily logs (2K) — index authed; write via global write-guard.
+    // Patrol (2K, Security).
+    Route::get('patrol', [PatrolController::class, 'index'])->name('patrol.index');
+    Route::post('patrol/sessions/start', [PatrolController::class, 'start'])->name('patrol.start');
+    Route::get('patrol/sessions/{session}', [PatrolController::class, 'show'])->name('patrol.session');
+    Route::post('patrol/sessions/{session}/scan', [PatrolController::class, 'scan'])->name('patrol.scan');
+    Route::post('patrol/sessions/{session}/cancel', [PatrolController::class, 'cancel'])->name('patrol.cancel');
+
+    // Boiler & Utility daily logs (2K).
     Route::get('utility/{type}', [UtilityLogController::class, 'index'])->name('utility.index');
     Route::post('utility/{type}', [UtilityLogController::class, 'store'])->name('utility.store');
     Route::delete('utility/{type}/{id}', [UtilityLogController::class, 'destroy'])->name('utility.destroy');
