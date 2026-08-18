@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'));
 
-// Public questionnaire (guest, no login; write-whitelisted `kuesioner/*` in the write-guard).
+// Public questionnaire (guest, no login; write-whitelisted `kuesioner/*`).
 Route::get('kuesioner/{questionnaire}', [PublicQuestionnaireController::class, 'fill'])->name('kuesioner.fill');
 Route::post('kuesioner/{questionnaire}/kirim', [PublicQuestionnaireController::class, 'submit'])->name('kuesioner.submit');
 Route::get('kuesioner/{questionnaire}/selesai', [PublicQuestionnaireController::class, 'thanks'])->name('kuesioner.thanks');
@@ -37,6 +38,11 @@ Route::middleware('auth')->group(function () {
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
+
+    // Compliance calendar (2K).
+    Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');
+    Route::delete('compliance/calendar/{event}', [CalendarController::class, 'destroy'])->name('calendar.destroy');
 
     // Patrol (2K, Security).
     Route::get('patrol', [PatrolController::class, 'index'])->name('patrol.index');
