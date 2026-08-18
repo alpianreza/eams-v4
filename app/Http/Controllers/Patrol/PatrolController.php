@@ -74,10 +74,9 @@ class PatrolController extends Controller
             return back()->withErrors(['barcode_value' => 'Checkpoint sudah discan pada sesi ini.']);
         }
 
-        $distance = $checkpoint->distanceFrom(
-            $data['latitude'] !== null ? (float) $data['latitude'] : null,
-            $data['longitude'] !== null ? (float) $data['longitude'] : null,
-        );
+        // nullable GPS may be omitted from the request — read null-safe.
+        $lat = isset($data['latitude']) ? (float) $data['latitude'] : null;
+        $lng = isset($data['longitude']) ? (float) $data['longitude'] : null;
 
         PatrolLog::create([
             'patrol_session_id' => $session->id,
@@ -87,9 +86,9 @@ class PatrolController extends Controller
             'barcode_value' => $data['barcode_value'],
             'status' => $data['status'],
             'note' => $data['note'] ?? null,
-            'latitude' => $data['latitude'] ?? null,
-            'longitude' => $data['longitude'] ?? null,
-            'distance_m' => $distance,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'distance_m' => $checkpoint->distanceFrom($lat, $lng),
             'checked_at' => now(),
         ]);
 
