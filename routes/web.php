@@ -15,6 +15,7 @@ use App\Http\Controllers\MasterData\AssetItemTypeController;
 use App\Http\Controllers\MasterData\EmployeeController;
 use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Patrol\PatrolController;
 use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
 use App\Http\Controllers\Questionnaire\QuestionnaireController;
@@ -39,6 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::get('home', HomeController::class)->name('home');
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
+    // Notifications (2K).
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
 
     Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
@@ -49,11 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::post('ems/{category}/entry', [EmsReportController::class, 'saveEntry'])->name('ems.entry.save');
     Route::post('ems/{category}/year', [EmsReportController::class, 'saveYear'])->name('ems.year.save');
 
-    // FDM Data Collection (2K).
     Route::get('fdm-data-collection', [FdmDataCollectionController::class, 'index'])->name('fdm.index');
     Route::post('fdm-data-collection/entry', [FdmDataCollectionController::class, 'saveEntry'])->name('fdm.entry.save');
 
-    // Thermal Imaging (2K).
     Route::get('compliance/thermal-imaging', [ThermalImagingController::class, 'index'])->name('thermal.index');
     Route::post('compliance/thermal-imaging', [ThermalImagingController::class, 'store'])->name('thermal.store');
     Route::get('compliance/thermal-imaging/{report}', [ThermalImagingController::class, 'show'])->name('thermal.show');
