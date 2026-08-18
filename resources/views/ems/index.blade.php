@@ -21,7 +21,7 @@
         @csrf
         <input type="hidden" name="report_year" value="{{ $year }}">
         <div class="col-auto"><label class="form-label small">Seksi</label><input type="text" name="section_key" class="form-control form-control-sm" required placeholder="mis. produksi-a"></div>
-        <div class="col-auto"><label class="form-label small">Bulan</label><select name="report_month" class="form-select form-select-sm">@for($m=1;$m<=12;$i++ ?? 0)@php($m=$m ?? 0)@endfor @for($m=1;$m<=12;$m++)<option value="{{ $m }}">{{ $m }}</option>@endfor</select></div>
+        <div class="col-auto"><label class="form-label small">Bulan</label><select name="report_month" class="form-select form-select-sm">@for($m=1;$m<=12;$m++)<option value="{{ $m }}">{{ $m }}</option>@endfor</select></div>
         <div class="col-auto"><label class="form-label small">Konsumsi</label><input type="number" step="0.001" name="consumption_amount" class="form-control form-control-sm"></div>
         <div class="col-auto"><button class="btn btn-sm btn-primary">Simpan</button></div>
     </form>

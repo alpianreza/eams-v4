@@ -18,7 +18,7 @@ return new class extends Migration
                 $table->timestamps();
             });
 
-            Schema::create("ems_{$cat}_entries", function (Blueprint $table) {
+            Schema::create("ems_{$cat}_entries", function (Blueprint $table) use ($cat) {
                 $table->id();
                 $table->unsignedSmallInteger('report_year');
                 $table->string('section_key');
