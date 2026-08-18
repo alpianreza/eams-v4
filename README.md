@@ -1,32 +1,47 @@
-# EAMS v4 — Laravel Rebuild
+# EAMS — Laravel 13 Rebuild
 
-Repository untuk membangun ulang **EAMS (Enterprise Asset & Compliance Management System)** dari CodeIgniter 4 ke Laravel.
+Rebuild of the EAMS (Enterprise Asset & Compliance Management System) CodeIgniter 4 legacy application into a clean, modular-monolith **Laravel 13 / PHP 8.5** application.
 
-## Status: Fase 0 (Audit) · Fase 0.5 (Review & Konsolidasi) · Fase 0.6 (Rekonsiliasi Production DB) — selesai (READ-ONLY)
+> The legacy CI4 codebase is used only as a **functional / business-rule / data reference**. It is not the base code and is never modified.
 
-Seluruh hasil audit atas repo legacy [`alpianreza/eams`](https://github.com/alpianreza/eams) terdokumentasi di folder [`docs/`](./docs):
+## Baseline
 
-| # | Dokumen |
+- **Framework:** Laravel 13.x (`laravel/framework ^13.0`)
+- **PHP:** ^8.5
+- **Database:** new clean Laravel DB (MySQL/MariaDB 10.4); the production CI4 DB is only the read-only source for `php artisan eams:import`.
+- **Frontend:** Blade + Bootstrap 5 + Vite (progressive enhancement).
+
+## Getting started
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+## Verify
+
+```bash
+php artisan about
+php artisan route:list
+php artisan migrate:status
+php artisan test
+```
+
+## Documentation (audit, decisions, architecture)
+
+All audit, reconciliation, business-decision and architecture documents live in [`docs/`](docs/):
+
+| Doc | Title |
 |---|---|
-| 00 | [Audit Overview](./docs/00-audit-overview.md) |
-| 01 | [System Architecture](./docs/01-system-architecture.md) |
-| 02 | [Modules](./docs/02-modules.md) |
-| 03 | [Database (Production-Verified)](./docs/03-database.md) |
-| 04 | [Routes](./docs/04-routes.md) |
-| 05 | [Controllers](./docs/05-controllers.md) |
-| 06 | [Models & Entities](./docs/06-models-entities.md) |
-| 07 | [Views & UI](./docs/07-views-ui.md) |
-| 08 | [JavaScript & AJAX](./docs/08-javascript-ajax.md) |
-| 09 | [Business Rules](./docs/09-business-rules.md) |
-| 10 | [Checklist Rules](./docs/10-checklist-rules.md) |
-| 11 | [Reports & PDF](./docs/11-reports-pdf.md) |
-| 12 | [Auth & Authorization](./docs/12-auth-authorization.md) |
-| 13 | [Dependencies](./docs/13-dependencies.md) |
-| 14 | [Technical Debt](./docs/14-technical-debt.md) |
-| 15 | [Ambiguities / Need Decision (Final Decision List)](./docs/15-ambiguities-need-decision.md) |
-| 16 | [Laravel Migration Considerations](./docs/16-laravel-migration-considerations.md) |
-| 17 | [Business Specification (Canonical)](./docs/17-business-specification.md) |
-| 18 | [Production Database Reconciliation](./docs/18-production-database-reconciliation.md) |
+| `docs/00`–`docs/16` | CI4 audit (Phase 0) |
+| `docs/17-business-specification.md` | Canonical Business Specification |
+| `docs/18-production-database-reconciliation.md` | Production DB Reconciliation |
+| `docs/19-decision-log.md` | Decision Log (Human-approved) |
+| `docs/20-laravel-architecture.md` | Laravel Architecture (DRAFT) |
 
-> Audit 2026-08-16 (read-only, repo legacy tidak diubah) · Review & konsolidasi 2026-08-18 · Rekonsiliasi production DB (`eams_database.sql`, MariaDB 10.4.32) 2026-08-18.
-> Sebelum mulai coding Laravel: selesaikan 21 keputusan `NEED HUMAN DECISION` tersisa di [docs/15](./docs/15-ambiguities-need-decision.md) — 3 Critical: Q-004 (engine status periode), Q-006 (checked_by), Q-007 (sumber kebenaran PIC). (5 item sudah RESOLVED BY PRODUCTION SCHEMA berkat `eams_database.sql`.)
+## Status
+
+See **Milestone** notes in the docs and `docs/20-laravel-architecture.md` for implementation status (IMPLEMENTED / IN PROGRESS / TODO).
