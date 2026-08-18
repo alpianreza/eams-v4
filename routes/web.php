@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Compliance\ComplianceInventoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MasterData\AreaController;
 use App\Http\Controllers\MasterData\AssetItemTypeController;
@@ -20,11 +21,17 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('home', HomeController::class)->name('home');
 
-    /*
-    | Master data (PHASE 2D).
-    | View (GET)  : any authenticated user.
-    | Manage (mutasi): admin/compliance (gate) + write permission (global write-guard).
-    */
+    // Compliance Inventory (2E). View = authed; manage = admin/compliance (gate) + write (global write-guard).
+    Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');
+    Route::get('compliance/inventory/create', [ComplianceInventoryController::class, 'create'])->name('compliance.inventory.create');
+    // QR compatibility (Q-021): identical URL to legacy.
+    Route::get('compliance/inventory/detail/{inventory}', [ComplianceInventoryController::class, 'show'])->name('compliance.inventory.detail');
+    Route::post('compliance/inventory', [ComplianceInventoryController::class, 'store'])->name('compliance.inventory.store')->middleware('can:manage-inventory');
+    Route::get('compliance/inventory/{inventory}/edit', [ComplianceInventoryController::class, 'edit'])->name('compliance.inventory.edit')->middleware('can:manage-inventory');
+    Route::put('compliance/inventory/{inventory}', [ComplianceInventoryController::class, 'update'])->name('compliance.inventory.update')->middleware('can:manage-inventory');
+    Route::delete('compliance/inventory/{inventory}', [ComplianceInventoryController::class, 'destroy'])->name('compliance.inventory.destroy')->middleware('can:manage-inventory');
+
+    // Master data (2D).
     Route::prefix('master-data')->name('master-data.')->group(function () {
         Route::get('areas', [AreaController::class, 'index'])->name('areas.index');
         Route::get('categories', [InventoryCategoryController::class, 'index'])->name('categories.index');
