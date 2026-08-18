@@ -11,6 +11,7 @@ use App\Http\Controllers\MasterData\AssetItemTypeController;
 use App\Http\Controllers\MasterData\EmployeeController;
 use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
+use App\Http\Controllers\Report\ComplianceReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'));
@@ -24,7 +25,6 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('home', HomeController::class)->name('home');
 
-    // Secure file serving (2H): business files served only via this authenticated controller.
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
     // Checklist — STANDARD (2F) & GRID (2G).
@@ -34,6 +34,11 @@ Route::middleware('auth')->group(function () {
     Route::post('compliance/checklist-grid/{itemType}/set', [GridChecklistController::class, 'set'])->name('compliance.checklist.grid.set');
     Route::post('compliance/checklist-grid/{itemType}/mark-all', [GridChecklistController::class, 'markAll'])->name('compliance.checklist.grid.mark-all');
     Route::post('compliance/checklist-grid/{itemType}/clear', [GridChecklistController::class, 'clear'])->name('compliance.checklist.grid.clear');
+
+    // Compliance report PDF (2I) — GATE access-compliance-pdf (Q-008: admin + Compliance access only).
+    Route::get('compliance/report/{inventory}/pdf', [ComplianceReportController::class, 'pdf'])
+        ->name('compliance.report.pdf')
+        ->middleware('can:access-compliance-pdf');
 
     // Compliance Inventory (2E).
     Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');
