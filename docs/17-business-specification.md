@@ -1,9 +1,10 @@
 # 17 — EAMS Business Specification (Canonical)
 
-> **Status dokumen:** SOURCE OF TRUTH perilaku bisnis EAMS — hasil konsolidasi & cross-check **Fase 0.5** (2026-08-18) atas seluruh dokumen audit Fase 0 (`docs/00`–`docs/16`), dengan evidence **production database** dari **Fase 0.6** (`eams_database.sql`, MariaDB 10.4.32 — lihat `docs/18`).
-> **Isi:** hanya behavior `CONFIRMED` (dengan evidence kode) atau yang secara eksplisit ditandai **UNRESOLVED** (dirujuk ke register keputusan `docs/15`).
-> **Penomoran:** `BR-01..BR-40` diwarisi dari `docs/09-business-rules.md` (traceability); `BR-41..BR-47` adalah rule baru hasil review Fase 0.5. Kontradiksi antar sumber dicatat sebagai `CONF-xxx` (Appendix A); keputusan manusia sebagai `Q-xxx` (`docs/15`).
-> **Aturan status:** `CONFIRMED` = terbukti dari kode/database; `AMBIGUOUS` = bukti saling konflik, **tidak diputuskan di dokumen ini**; aspek `INFERRED`/`UNKNOWN` tidak dijadikan rule mandiri — dicatat sebagai Notes atau Q-item.
+> **Status dokumen:** SOURCE OF TRUTH perilaku bisnis EAMS — hasil konsolidasi & cross-check **Fase 0.5** (2026-08-18) atas seluruh dokumen audit Fase 0 (`docs/00`–`docs/16`), dengan evidence **production database** dari **Fase 0.6** (`eams_database.sql`, MariaDB 10.4.32 — lihat `docs/18`) dan **keputusan bisnis final** Project Owner dari **Fase 1** (`docs/19`).
+> **Isi:** behavior `CONFIRMED` (dengan evidence kode) + keputusan stakeholder (field **Decision**); yang masih terbuka ditandai **NEED HUMAN DECISION** (dirujuk ke `docs/15`).
+> **Penomoran:** `BR-01..BR-40` diwarisi dari `docs/09-business-rules.md` (traceability); `BR-41..BR-47` rule baru hasil review Fase 0.5. Kontradiksi dicatat sebagai `CONF-xxx` (Appendix A); keputusan manusia sebagai `Q-xxx` (`docs/15`/`docs/19`).
+> **Aturan status:** `CONFIRMED` = terbukti dari kode/database; `AMBIGUOUS` = bukti saling konflik; `RESOLVED` = telah diputuskan (production schema atau Project Owner); aspek `INFERRED`/`UNKNOWN` dicatat sebagai Notes atau Q-item.
+> **Update Fase 1 (2026-08-18):** keputusan bisnis final Project Owner (`docs/19-decision-log.md`) diintegrasikan ke rule terkait — field **Decision** ditambahkan pada rule yang diputuskan. Ringkasan status keputusan: §18.
 
 ---
 
@@ -14,11 +15,12 @@ EAMS (Enterprise Asset & Compliance Management System) adalah aplikasi internal 
 **Inti bisnis (CONFIRMED):** compliance checklist fasilitas pabrik — inventory fasilitas → pertanyaan checklist per item type → log pengisian per periode (daily/weekly/monthly) → monitoring (home, progress, ranking) → report/PDF. Di sekelilingnya: patrol security (barcode + GPS + foto), IT asset & device monitoring (EAMS Agent Windows → `/api/agent/*`), utility logs (Boiler/IPAL/PDAM), EMS/GHG report, FDM data collection, kuesioner publik, thermal imaging, notifikasi multi-kanal (in-app/email/WA Fonnte), dan backup system.
 
 **Stack (CONFIRMED):**
+
 | Aspek | Nilai | Evidence |
 |---|---|---|
 | Framework | CodeIgniter 4 (folder `system/` di-commit ke repo) | `composer.json`, `app/Config/Autoload.php` |
-| PHP | ^8.1 | `composer.json` |
-| DB | MySQL/MariaDB via MySQLi; DB default `asset_compliance_system` | `app/Config/Database.php` |
+| PHP | ^8.1 (production server 8.2.12) | `composer.json`, `eams_database.sql` |
+| DB | MySQL/MariaDB via MySQLi; DB default `asset_compliance_system` (production: MariaDB 10.4.32) | `app/Config/Database.php`, `eams_database.sql` |
 | Session | FileHandler, cookie `eams_session`, 28.800 dtk (8 jam), regenerate 3.600 dtk | `app/Config/Session.php` |
 | Timezone / baseURL | Asia/Jakarta; `https://eams.ptyhs.com/` | `app/Config/App.php` |
 | PDF | mPDF (library wrapper) → migrasi bertahap ke Dompdf | `composer.json`, `app/Libraries/` |
@@ -49,12 +51,12 @@ EAMS (Enterprise Asset & Compliance Management System) adalah aplikasi internal 
 - **Notes:** efek samping pada self-service settings → BR-43 / Q-021.
 
 ### BR-43 — User read-only tidak dapat mengubah password/kontaknya sendiri
-- **Status:** CONFIRMED (perilaku) — **intent AMBIGUOUS → Q-021**
+- **Status:** CONFIRMED (perilaku) — **intent AMBIGUOUS → Q-021 (masih NEED HUMAN DECISION)**
 - **Rule (teramati):** karena halaman Settings self-service (ganti password, kontak, tandai-notifikasi-terbaca) memakai POST ke `settings/change-password` dan path `/settings` tidak masuk whitelist WriteFilter, user read-only ikut terblokir.
 - **Behavior:** read-only user hanya bisa melihat; semua POST miliknya (termasuk milik dirinya sendiri) 403.
 - **Evidence:** `app/Filters/WriteFilter.php` (publicPrefixes tidak memuat `/settings`); `app/Controllers/SettingController.php`.
 - **Affected Modules:** Settings, Notifications.
-- **Notes:** **NEED HUMAN DECISION** — by design atau oversight (Q-021). Jangan diputuskan di sini.
+- **Notes:** **NEED HUMAN DECISION** — by design atau oversight (Q-021). Tidak diputuskan di Fase 1; desain Laravel menyiapkan whitelist yang mudah dikonfigurasi.
 
 ### BR-44 — Visibilitas menu mengikuti page_access
 - **Status:** CONFIRMED
@@ -85,6 +87,7 @@ Master data compliance (CONFIRMED): `areas`, `inventory_categories`, `asset_item
 - **Evidence:** `ComplianceInventoryController::store()` dan `::update()`.
 - **Affected Modules:** Compliance Inventory, QR, Checklist, Report.
 - **Notes:** **koreksi Fase 0.6:** production punya `UNIQUE KEY uniq_asset_code (asset_code)` (CONF-DB-005). Pola check-then-insert tetap bisa race → hasilnya error insert (bukan duplikat).
+- **Decision (Fase 1, docs/19 Q-020):** asset_code = BUSINESS IDENTIFIER — dipertahankan **PERSIS** saat migrasi (jangan regenerate); asset baru pakai generator format sama; duplikat = dilaporkan sebagai migration issue, bukan di-rename.
 
 ### BR-20 — QR code = URL detail, gambar dari API eksternal
 - **Status:** CONFIRMED
@@ -92,7 +95,8 @@ Master data compliance (CONFIRMED): `areas`, `inventory_categories`, `asset_item
 - **Behavior:** generate saat store; regenerate saat asset_code berubah / via tombol regenerate / regen per album.
 - **Evidence:** `app/Services/QrService.php`; `ComplianceInventoryController::store/update/regenerateQr/qrAlbumRegen`.
 - **Affected Modules:** Compliance Inventory, QR Center, Patrol (praktik serupa), mobile scanning.
-- **Notes:** dependency eksternal; `endroid/qr-code` tersedia tapi tidak dipakai (kandidat pengganti di Laravel — catatan, bukan keputusan).
+- **Notes:** dependency eksternal; `endroid/qr-code` tersedia tapi tidak dipakai.
+- **Decision (Fase 1, docs/19 Q-021):** QR URL tetap **PERSIS** seperti legacy (`compliance/inventory/detail/{id}`) — Laravel menyediakan route kompatibel; QR image boleh diregenerate (paket lokal), payload/URL tidak berubah.
 
 ### BR-45 — Edit inventory mengunci kategori, area, dan item type
 - **Status:** CONFIRMED (baru, Fase 0.5)
@@ -107,12 +111,13 @@ Master data compliance (CONFIRMED): `areas`, `inventory_categories`, `asset_item
 ## 4. Compliance Inventory
 
 ### BR-21 — PIC maksimal 2 + notifikasi assignment
-- **Status:** CONFIRMED
-- **Rule:** maksimal 2 PIC per inventory; PIC pertama = primary (`is_primary`); perubahan PIC memicu notifikasi "Penugasan inventory baru" (dedupe `inventory_assignment:{inventory}:{user}`); relasi disimpan di `compliance_inventory_pics` dan di-backfill dari kolom teks `pic`.
+- **Status:** RESOLVED (Fase 1)
+- **Rule:** maksimal 2 PIC per inventory; perubahan PIC memicu notifikasi "Penugasan inventory baru" (dedupe `inventory_assignment:{inventory}:{user}`); relasi disimpan di `compliance_inventory_pics`.
 - **Behavior:** penambahan/penggantian PIC → baris relasi + notifikasi in-app (+email/WA bila aktif).
 - **Evidence:** `app/Models/ComplianceInventoryModel.php` (callbacks); migration `2026-08-07-000002` (tabel pics + backfill); `app/Libraries/NotificationService.php`.
 - **Affected Modules:** Compliance Inventory, Home, Progress, Notifications.
-- **Notes:** **konflik mekanisme PIC (teks vs relasi)** → CONF-004 / Q-007. **Production verified (Fase 0.6):** pics = UNIQUE(inventory_id,user_id), is_primary tinyint, TANPA FK (signedness mismatch); kolom `pic varchar(100)` masih ada & aktif ditulis. Keputusan sumber kebenaran tetap terbuka.
+- **Notes:** **konflik mekanisme PIC (teks vs relasi)** → CONF-004 / Q-007. **Production verified (Fase 0.6):** pics = UNIQUE(inventory_id,user_id), is_primary tinyint, TANPA FK (signedness mismatch); kolom `pic varchar(100)` masih ada & aktif ditulis.
+- **Decision (Fase 1, docs/19 Q-007):** `compliance_inventory_pics` = **SOURCE OF TRUTH**; maks 2 PIC per inventory, kedudukan **sama** (TANPA primary/secondary; `is_primary` bukan rule Laravel); kolom teks `pic` hanya untuk migration/backward-compat.
 
 ### BR-46 — PIC dipilih dari user aktif, digabung separator " - "
 - **Status:** CONFIRMED (baru, Fase 0.5)
@@ -120,26 +125,28 @@ Master data compliance (CONFIRMED): `areas`, `inventory_categories`, `asset_item
 - **Behavior:** JS modal men-sync dua dropdown → hidden input `pic` ("Nama1 - Nama2"); parse ulang saat modal dibuka memecah pada newline/koma/" - ", maks 2.
 - **Evidence:** `app/Views/compliance/inventory/_modal_edit.php` (query `UserModel where status=active`, `<script>` parse/sync).
 - **Affected Modules:** Compliance Inventory, Home, Progress, Reminder.
-- **Notes:** inilah sumber mekanisme "PIC via nama" yang berkonflik dengan relasi pics (CONF-004 / Q-007).
+- **Notes:** **terkait Q-007 (Fase 1):** mekanisme teks ini hanya untuk input UI saat migrasi; business logic Laravel memakai relasi `compliance_inventory_pics` sebagai source of truth.
 
 ### BR-22 — Status inventory: Good / Need Repair / Not Active
-- **Status:** CONFIRMED — **ditingkatkan dari INFERRED pada Fase 0.5**
-- **Rule:** nilai status yang sah di UI: `Good`, `Need Repair`, `Not Active` (badge: Baik / Perlu Perbaikan / Tidak Aktif; baris kuning untuk Need Repair, abu untuk Not Active).
+- **Status:** RESOLVED (Fase 1)
+- **Rule:** nilai status yang sah di UI legacy: `Good`, `Need Repair`, `Not Active` (badge: Baik / Perlu Perbaikan / Tidak Aktif; baris kuning untuk Need Repair, abu untuk Not Active).
 - **Behavior:** dropdown edit hanya memuat 3 opsi tersebut; JS memberi warna baris sesuai status.
 - **Evidence:** `app/Views/compliance/inventory/_modal_edit.php` (`<select name="status">` berisi persis 3 opsi); `public/js/inventory.js getStatusMeta/updateInventoryRowFromEditForm`.
 - **Affected Modules:** Compliance Inventory, Dashboard, Report.
-- **Notes:** **production verified (Fase 0.6):** `compliance_inventory.status varchar(50) DEFAULT NULL` — bebas teks (bukan ENUM) → penetapan enum resmi tetap Q-017.
+- **Notes:** **production verified (Fase 0.6):** `compliance_inventory.status varchar(50) DEFAULT NULL` — bebas teks di legacy.
+- **Decision (Fase 1, docs/19 Q-017):** status kondisi inventory resmi = **GOOD / NEED_REPAIR / NOT_ACTIVE** — **berbeda** dari checklist status (jangan dicampur).
 
 ### BR-23/24/25 — Reminder & notifikasi
 Lihat §10 Notifications (penomoran dipertahankan di sana).
 
-**Atribut lain (CONFIRMED, dari audit):** `expired_date` opsional (dipakai untuk highlight & print APAR); `qty` pada tambah; foto inventory via `updatePhoto` (validasi mime jpeg/png/webp, **tanpa** cek ukuran → CONF-013); QR Center: album per item type, download zip, print album, regen massal; `qrBatch` (zip by ids) **method ada tapi tidak ter-rute** (CONF-020 terkait, Appendix C).
+**Atribut lain (CONFIRMED, dari audit):** `expired_date` opsional (dipakai untuk highlight & print APAR — **Decision Fase 1 Q-018:** expiry terutama untuk APAR, tidak auto-mengubah status, visibilitas via konfigurasi); `qty` pada tambah; foto inventory via `updatePhoto`; QR Center: album per item type, download zip, print album, regen massal; `qrBatch` (zip by ids) **method ada tapi tidak ter-rute**.
 
 ---
 
 ## 5. Checklist
 
 > Engine periode & aturan pengisian. Detail penuh: `docs/10-checklist-rules.md`. Penomoran BR-01..BR-18 diwarisi dari `docs/09`.
+> **Decision (Fase 1):** (a) dua engine status periode legacy digabung jadi **satu** engine dengan status kanonik **DONE/OPEN/LATE/FUTURE/HOLIDAY** (docs/19 Q-004); (b) perilaku khusus item type memakai **`asset_item_types.code`**, bukan hard-coded id (docs/19 Q-015); (c) checklist punya **dua mode resmi: STANDARD & GRID** (docs/19 Q-016).
 
 ### BR-01 — Format period_key
 - **Status:** CONFIRMED
@@ -163,7 +170,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** periode kosong yang melewati ambang dihitung "late" di home/progress/reminder.
 - **Evidence:** `period_helper.php is_period_late()` (`+21 days`, `+28 days // 4 minggu`, `+3 months`).
 - **Affected Modules:** Home, Progress, Reminder, Sidebar badge.
-- **Notes:** definisi "late" di dashboard KPI **berbeda** (history-based) → CONF-014 / Q-019.
+- **Notes:** definisi "late" di dashboard KPI **berbeda** (history-based) → CONF-014 / Q-019 (masih NEED HUMAN DECISION).
 
 ### BR-04 — Future terkunci & jendela editable
 - **Status:** CONFIRMED
@@ -171,31 +178,32 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** form/grid menolak periode di luar jendela.
 - **Evidence:** `period_helper.php is_period_editable()/is_period_future()`.
 - **Affected Modules:** Checklist (form & grid).
-- **Notes:** asimetri weekly vs monthly → Q-011 (Minor).
+- **Notes:** asimetri weekly vs monthly → Q-011 (masih NEED HUMAN DECISION).
 
 ### BR-05 — Status periode untuk kalender UI (implementasi yang menang)
-- **Status:** CONFIRMED (perilaku runtime)
-- **Rule:** prioritas status: `done` (ada log) > `future` > `late` > `pending`.
+- **Status:** CONFIRMED (perilaku runtime legacy)
+- **Rule:** prioritas status legacy: `done` (ada log) > `future` > `late` > `pending`.
 - **Behavior:** sel kalender diwarnai sesuai status ini.
 - **Evidence:** `period_helper.php resolve_period_status()`.
 - **Affected Modules:** Checklist UI, Detail inventory.
 - **Notes:** ada implementasi ganda dengan semantik lain → BR-06 / CONF-002 / Q-004.
+- **Decision (Fase 1, docs/19 Q-004):** status kanonik tunggal = **DONE / OPEN / LATE / FUTURE / HOLIDAY** (lihat BR-06).
 
-### BR-06 — ⚠️ Dua implementasi resolve_period_status yang berbeda
-- **Status:** CONFIRMED (duplikasi ada) — **semantik AMBIGUOUS → Q-004**
-- **Rule:** `period_status_helper.php` mendefinisikan fungsi bernama sama dengan hasil berbeda: `done` > daily(`holiday`/`locked`/`open`), weekly/monthly(`locked` bila future, else `open`).
-- **Behavior:** karena keduanya di-autoload (`Config\Autoload::$helpers`), yang termuat lebih dulu yang menang (`period` sebelum `period_status`) — perilaku bergantung urutan load.
+### BR-06 — Engine status periode digabung jadi satu
+- **Status:** RESOLVED (Fase 1) — duplikasi engine ditiadakan
+- **Rule (legacy):** `period_status_helper.php` mendefinisikan fungsi bernama sama dengan hasil berbeda: `done` > daily(`holiday`/`locked`/`open`), weekly/monthly(`locked` bila future, else `open`).
+- **Behavior (legacy):** karena keduanya di-autoload, yang termuat lebih dulu yang menang — perilaku bergantung urutan load.
 - **Evidence:** `app/Config/Autoload.php`; `app/Helpers/period_helper.php`; `app/Helpers/period_status_helper.php`.
 - **Affected Modules:** Checklist UI.
-- **Notes:** **NEED HUMAN DECISION** — pilih satu mesin status (Q-004). Tidak diputuskan di sini.
+- **Decision (Fase 1, docs/19 Q-004):** satu engine status periode dengan canonical status **DONE/OPEN/LATE/FUTURE/HOLIDAY**; behavior legacy dipertahankan sedekat mungkin; jangan buat dua engine lagi.
 
 ### BR-07 — Hari non-kerja (offday)
-- **Status:** CONFIRMED
+- **Status:** RESOLVED (Fase 1)
 - **Rule:** Minggu selalu libur; Sabtu libur **hanya untuk tanggal ≥ 2026-04-01**; plus tanggal pada tabel `holidays`.
 - **Behavior:** pengisian daily pada offday diblokir; kalender menandai offday; export PDAM/boiler mewarnai hari libur.
-- **Evidence:** `checklist_helper.php is_weekend_offday()/is_date_offday()/holiday_dates_between()` (`dayOfWeek===0 → true; dayOfWeek===6 && date>='2026-04-01' → true`).
+- **Evidence:** `checklist_helper.php is_weekend_offday()/is_date_offday()/holiday_dates_between()`.
 - **Affected Modules:** Checklist daily, Home, Progress, PDAM/Boiler export, Calendar.
-- **Notes:** **konflik** dgn `holiday_helper.php is_holiday()` (Sabtu+Minggu selalu libur, tanpa tanggal efektif) → CONF-003 / Q-005.
+- **Decision (Fase 1, docs/19 Q-005):** effective date policy — **sebelum 1 April 2026** Sabtu = working day; **mulai 1 April 2026** Sabtu = holiday; **tidak retroaktif**; histori konsisten dengan policy saat itu. (Menutup CONF-003 / Q-005.)
 
 ### BR-08 — Blokir pengisian pada hari libur (daily)
 - **Status:** CONFIRMED
@@ -203,7 +211,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** submit/grid-save mengembalikan error "Checklist tidak dapat diisi pada hari libur."; form menampilkan lock `offday`.
 - **Evidence:** `ComplianceInventoryController::submitChecklist`, `saveCctvGrid`, `saveFirstAidContentGrid`, `saveGenericGrid`; `checklist()` (`lockReason='offday'`).
 - **Affected Modules:** Checklist.
-- **Notes:** —
+- **Notes:** status HOLIDAY kini bagian dari engine kanonik (Q-004).
 
 ### BR-09 — Anti-duplikat periode
 - **Status:** CONFIRMED
@@ -211,47 +219,50 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** form full-submit menolak; grid boleh **update sel existing** (= koreksi).
 - **Evidence:** `submitChecklist` (`$existsQuery->first()`); `checklist()` (`lockReason='done'`); seluruh `save*Grid`.
 - **Affected Modules:** Checklist.
-- **Notes:** **production verified (Fase 0.6):** memang tidak ada UNIQUE(inventory_id, period_key[, time_slot]) di DB → **APPLICATION-LEVEL CONSTRAINT** (docs/18 §7.2); risiko race tetap ada.
+- **Notes:** **production verified (Fase 0.6):** tidak ada UNIQUE(inventory_id, period_key[, time_slot]) di DB → **APPLICATION-LEVEL CONSTRAINT**; risiko race tetap ada (candidate UNIQUE di Laravel, `docs/20` §5).
 
 ### BR-10 — not_ok wajib bukti
-- **Status:** CONFIRMED
+- **Status:** RESOLVED (Fase 1)
 - **Rule:** status `not_ok` wajib remark **atau** foto (minimal salah satu).
 - **Behavior:** validasi server + client menolak submit bila keduanya kosong.
-- **Evidence:** `submitChecklist` (`in_array($status,['not_ok','ng']) && remark==='' && !photo → error`); `public/js/checklist.js validateChecklistForm`.
+- **Evidence:** `submitChecklist`; `public/js/checklist.js validateChecklistForm`.
 - **Affected Modules:** Checklist, Evidence.
-- **Notes:** flag `require_photo` di master pertanyaan **tidak** ditegakkan → Q-013.
+- **Decision (Fase 1, docs/19 Q-013):** default rule ditegaskan — NOT_OK wajib remark ATAU foto. **Standard checklist:** keduanya kosong → tidak boleh selesai. **EXCEPTION: GRID checklist boleh bypass** untuk fast entry (mis. P3K harian). `require_photo` tetap konfigurasi master untuk kebutuhan khusus (bukan berarti semua wajib foto). (Menutup CONF-012/013 terkait validasi, & Q-013.)
 
 ### BR-11 — Nilai status: ok / not_ok / na (ng dipetakan ke not_ok)
-- **Status:** CONFIRMED (kode + production DB) — **Q-001 RESOLVED BY PRODUCTION SCHEMA (Fase 0.6)**
+- **Status:** RESOLVED (kode + production DB + human decision)
 - **Rule:** kode/UI memakai `ok`, `not_ok`, `na`; input legacy `ng` dipetakan ke `not_ok` saat submit; nilai tak dikenal → default `na`.
 - **Behavior:** `match($status){ 'ok'=>'ok','not_ok'=>'not_ok','ng'=>'not_ok','na'=>'na', default=>'na' }`.
 - **Evidence:** `submitChecklist`; seluruh `save*Grid`.
 - **Affected Modules:** Checklist, Report, Evidence, Ranking.
 - **Notes:** CONF-001 terselesaikan — **Production DB** (`eams_database.sql`, 2026-08-18): `checklist_logs.status enum('ok','not_ok','na') NOT NULL DEFAULT 'ok'` — konsisten dengan kode; migration lama sudah diubah di production. Q-001 RESOLVED.
+- **Decision (Fase 1, docs/19 Q-001):** nilai status sah = `ok | not_ok | na`; NA = hasil valid bila `allow_na` (bukan pending/failure/late); periode = DONE bila seluruh pertanyaan punya hasil valid.
 
 ### BR-12 — NA hanya bila diizinkan item type
-- **Status:** CONFIRMED
+- **Status:** RESOLVED (Fase 1)
 - **Rule:** opsi NA pada form tampil hanya bila `asset_item_types.allow_na` truthy.
 - **Behavior:** form menyembunyikan/menampilkan opsi NA per item.
 - **Evidence:** `app/Views/compliance/checklist/_form.php` (`!empty($inventory['allow_na'])`); kolom di-select di `checklist()`/`genericGrid()`.
 - **Affected Modules:** Checklist.
-- **Notes:** **production verified (Fase 0.6):** `allow_na tinyint(1) DEFAULT 0` (Q-003 RESOLVED). Dukungan NA **per kanal** tidak konsisten → BR-47 / Q-020.
+- **Notes:** **production verified (Fase 0.6):** `allow_na tinyint(1) DEFAULT 0` (Q-003 RESOLVED).
+- **Decision (Fase 1, docs/19 Q-001):** `allow_na=true` → OK/NOT_OK/NA diperbolehkan; `allow_na=false` → NA tidak diperbolehkan; NA diterima di **semua kanal** selama `allow_na` mengizinkan (menutup CONF-027 / Q-020 audit).
 
 ### BR-13 — checked_by = nama user (string)
-- **Status:** CONFIRMED
-- **Rule:** `checklist_logs.checked_by` diisi `session()->get('name')` (string), bukan user id.
-- **Behavior:** laporan & ranking mengelompokkan berdasarkan string nama.
+- **Status:** RESOLVED (Fase 1)
+- **Rule (legacy):** `checklist_logs.checked_by` diisi `session()->get('name')` (string), bukan user id.
+- **Behavior (legacy):** laporan & ranking mengelompokkan berdasarkan string nama.
 - **Evidence:** `submitChecklist`, semua `save*Grid`, `markAll*`.
 - **Affected Modules:** Checklist, Report, Ranking.
-- **Notes:** tabel lain (patrol) memakai INT user id → Q-006. **Production verified (Fase 0.6):** `checked_by varchar(100) DEFAULT NULL` — LEGACY DATABASE BEHAVIOR; keputusan migrasi ke FK tetap terbuka (Q-006).
+- **Notes:** tabel lain (patrol) memakai INT user id → Q-006. **Production verified (Fase 0.6):** `checked_by varchar(100) DEFAULT NULL` — LEGACY DATABASE BEHAVIOR.
+- **Decision (Fase 1, docs/19 Q-006):** Laravel memakai `checked_by_user_id` (FK `users.id`) + `checked_by_name` (snapshot nama saat checklist) — histori tetap tertelusur walau user berubah/inactive.
 
 ### BR-14 — Toilet checklist 3 slot waktu
 - **Status:** CONFIRMED
-- **Rule:** item_type_id=52 = checklist toilet harian dengan 3 slot `PG` (Pagi) / `SI` (Siang) / `SO` (Sore); slot wajib dipilih; lock & dedup dilakukan per (inventory, periode, slot).
+- **Rule:** item toilet = checklist harian dengan 3 slot `PG` (Pagi) / `SI` (Siang) / `SO` (Sore); slot wajib dipilih; lock & dedup dilakukan per (inventory, periode, slot).
 - **Behavior:** tanpa slot → form terkunci (`lockReason='slot'`); grid toilet menampilkan baris per slot.
 - **Evidence:** konstanta `TOILET_CHECKLIST_ITEM_TYPE_ID=52`; `checklist()`, `submitChecklist`, `genericGrid`; `ComplianceReportController`.
 - **Affected Modules:** Checklist, Report.
-- **Notes:** **production verified (Fase 0.6):** `time_slot varchar(5) DEFAULT NULL` (Q-003 RESOLVED).
+- **Notes:** **production verified (Fase 0.6):** `time_slot varchar(5) DEFAULT NULL` (Q-003 RESOLVED). **Decision terkait (Q-015):** identifikasi item toilet memakai `asset_item_types.code='TOILET'`, bukan id hard-coded 52.
 
 ### BR-15 — Grid "mark all" tidak menimpa data (dengan satu pengecualian)
 - **Status:** CONFIRMED
@@ -259,7 +270,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** insert hanya untuk kombinasi (inventory, periode, pertanyaan) yang belum punya log.
 - **Evidence:** semua `markAll*Grid` (guard `isset($existingMap[...])`).
 - **Affected Modules:** Checklist grid.
-- **Notes:** **PENGECUALIAN:** `markAllHeatDetectorGrid` **meng-update** existing ke `ok` (tidak skip) → CONF-009 / Q-024.
+- **Notes:** **PENGECUALIAN:** `markAllHeatDetectorGrid` **meng-update** existing ke `ok` (tidak skip) → CONF-009 / Q-024 (masih NEED HUMAN DECISION — desain Laravel menyiapkan flag per-grid).
 
 ### BR-16 — Grid "clear" menghapus log
 - **Status:** CONFIRMED
@@ -271,11 +282,11 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 
 ### BR-17 — check_date ≠ selalu tanggal pengisian
 - **Status:** CONFIRMED
-- **Rule:** form submit → `check_date = hari ini`; grid daily (CCTV/FAC/gate) → `check_date = period_key`; grid weekly → `check_date = bulan-01` (`preg_replace('/-W[1-4]$/','-01',…)`); grid monthly → `check_date = period_key.'-01'`.
+- **Rule:** form submit → `check_date = hari ini`; grid daily (CCTV/FAC/gate) → `check_date = period_key`; grid weekly → `check_date = bulan-01`; grid monthly → `check_date = period_key.'-01'`.
 - **Behavior:** nilai check_date berbeda tergantung kanal pengisian.
-- **Evidence:** `submitChecklist` (`'check_date'=>date('Y-m-d')`); `saveGenericGrid` (cabang per frekuensi); `saveCctvGrid`; `markAllIntrusionAlarmGrid`.
+- **Evidence:** `submitChecklist`; `saveGenericGrid` (cabang per frekuensi); `saveCctvGrid`; `markAllIntrusionAlarmGrid`.
 - **Affected Modules:** Checklist, Ranking, Report.
-- **Notes:** memengaruhi perhitungan on-time (BR-18) — dampaknya pada deviasi ranking form-vs-grid berstatus INFERRED (dicatat, bukan rule).
+- **Notes:** memengaruhi perhitungan on-time (BR-18).
 
 ### BR-18 — On-time & skor ranking
 - **Status:** CONFIRMED
@@ -285,15 +296,14 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Affected Modules:** Ranking, Dashboard.
 - **Notes:** —
 
-### BR-47 — Dukungan status NA tidak konsisten antar kanal pengisian
-- **Status:** CONFIRMED (perilaku) — **konsistensi AMBIGUOUS → Q-020** (baru, Fase 0.5)
-- **Rule (teramati):** (a) form per-item menerima `na` bila `allow_na`; (b) grid Emergency Light & Emergency Exit Light menerima mode `na`; (c) grid CCTV **menolak** mengubah sel `na` (409); (d) grid lain (First Aid Box, First Aid Content, APAR, Intrusion Alarm, Hydrant, Heat Detector, Smoke Detector, Gate, generic) **tidak** menerima mode `na` sama sekali (mode dibatasi `ok|not_ok|clear`).
-- **Behavior:** NA hanya bisa lewat kanal tertentu tergantung item type.
-- **Evidence:** `saveEmergencyLightGrid`/`saveEmergencyExitLightGrid` (mode ∈ ok/not_ok/na/clear); `saveCctvGrid` (409 utk na); `saveGenericGrid` & grid lain (mode ∈ ok/not_ok/clear); `_form.php` (allow_na).
+### BR-47 — Dukungan status NA (konsisten di semua kanal)
+- **Status:** RESOLVED (Fase 1)
+- **Rule (teramati legacy):** (a) form per-item menerima `na` bila `allow_na`; (b) grid EL/EEL menerima mode `na`; (c) grid CCTV menolak ubah sel `na` (409); (d) grid lain tidak menerima mode `na` (mode dibatasi `ok|not_ok|clear`).
+- **Evidence:** `saveEmergencyLightGrid`/`saveEmergencyExitLightGrid`; `saveCctvGrid` (409 utk na); `saveGenericGrid` & grid lain; `_form.php` (allow_na).
 - **Affected Modules:** Checklist.
-- **Notes:** **NEED HUMAN DECISION** — disengaja per kanal atau belum dirapikan (Q-020).
+- **Decision (Fase 1, docs/19 Q-001):** NA diterima di **semua kanal** (standard + grid) selama `allow_na` item mengizinkan — ketidakkonsistenan legacy (CONF-027) ditiadakan.
 
-**Kanal pengisian (CONFIRMED):** 4 kanal — (1) **form per-item** (`compliance/checklist/{id}`), (2) **12 grid khusus** per item type (CCTV=13, Emergency Light=4, Emergency Exit Light=59, First Aid Box=10, First Aid Content=33, APAR=1, Intrusion Alarm=8, Hydrant=2, Heat Detector=6, Smoke Detector=7, Gate=40, Toilet=52), (3) **generic grid** (item lain, dipakai staff), (4) **form toilet 3-slot**. Kolom grid khusus dipetakan dari **teks pertanyaan** (resolve*GridColumns) — rapuh, dicatat sebagai legacy (§17).
+**Kanal pengisian (CONFIRMED):** 4 kanal — (1) **form per-item** (STANDARD), (2) **12 grid khusus** per item type, (3) **generic grid**, (4) **form toilet 3-slot**. **Decision (Fase 1):** dua mode resmi **STANDARD & GRID** (Q-016); perilaku khusus item type by `code` (Q-015); kolom grid di-resolve via relasi/id stabil ke `checklist_master`, bukan teks pertanyaan (perbaikan desain, behavior sama).
 
 ---
 
@@ -306,7 +316,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 
 - **Evidence:** `app/Controllers/ComplianceEvidenceController.php` (ajax/detail/updateFollowup); `app/Models/ChecklistLogModel.php` (allowedFields follow_up_*); `public/js/evidence.js`.
 - **Affected Modules:** Checklist, Evidence, Report.
-- **Notes:** **production verified (Fase 0.6):** `follow_up_status enum('open','monitoring','closed') DEFAULT 'open'`, `follow_up_note text`, `follow_up_date date` (Q-003 RESOLVED). Upload foto checklist **tanpa validasi mime/size** → CONF-012 / Q-026.
+- **Notes:** **production verified (Fase 0.6):** `follow_up_status enum('open','monitoring','closed') DEFAULT 'open'`, `follow_up_note text`, `follow_up_date date` (Q-003 RESOLVED). Upload foto checklist tanpa validasi legacy → validasi terpusat di Laravel (Q-026 technical). **Decision terkait (Q-023):** Laravel menambah `checklist_log_histories` untuk audit trail perubahan.
 
 ---
 
@@ -321,9 +331,10 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Evidence:** `HomeController`, `ComplianceProgressController`, `ComplianceRankingController`, `ComplianceDashboardController`; `BaseController::loadNotifications/calculateChecklistReminders`.
 - **Affected Modules:** Home, Dashboard, Progress, Ranking.
 - **Notes (konflik/gap):**
-  - Definisi "late" pada KPI dashboard = **history-based** (punya histori tapi belum ada log periode aktif) ≠ `is_period_late` time-based → CONF-014 / Q-019.
-  - Route `compliance/dashboard/risk-trend` & `.../data` menunjuk method yang **tidak ada** (`getRiskTrendAjax`, `ajaxData`) → CONF-006 / Q-009.
-  - View `compliance/dashboard/overdue.php` yatim (tak ada yang merender; link internalnya menuju route tak terdaftar) → CONF-028.
+  - Definisi "late" pada KPI dashboard = **history-based** ≠ `is_period_late` time-based → CONF-014 / Q-019 (masih NEED HUMAN DECISION).
+  - Route `compliance/dashboard/risk-trend` & `.../data` menunjuk method yang tidak ada → CONF-006.
+  - View `compliance/dashboard/overdue.php` yatim → CONF-028.
+- **Decision (Fase 1, docs/19 Q-009):** Risk Trend endpoint/dashboard yang dead **TIDAK dibawa** ke Laravel; jangan mereplikasi dead feature. (Menutup Q-009.)
 
 ---
 
@@ -351,18 +362,18 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Notes:** legacy alternatif `it_health_helper` (Win7 −40 dst.) → §17.
 
 ### BR-34 — Ambang online/offline device
-- **Status:** CONFIRMED (keduanya ada) — **inkonsisten → Q-012**
-- **Rule:** helper UI `device_is_online` = online bila `now − last_seen ≤ max(172800 dtk, 2×interval)` (default ≥48 jam); command `it:status` menandai offline bila `> 600 dtk`.
+- **Status:** RESOLVED (Fase 1)
+- **Rule (legacy, inkonsisten):** helper UI `device_is_online` = online bila `now − last_seen ≤ max(172800 dtk, 2×interval)` (default ≥48 jam); command `it:status` menandai offline bila `> 600 dtk`.
 - **Evidence:** `app/Helpers/device_helper.php`; `app/Commands/DeviceStatusCheck.php`.
 - **Affected Modules:** IT Devices.
-- **Notes:** **NEED HUMAN DECISION** — satu sumber kebenaran (Q-012).
+- **Decision (Fase 1, docs/19 Q-012):** device **ONLINE** bila heartbeat terakhir ≤ **10 menit** (> 600 dtk → OFFLINE); satu **centralized configuration**, tanpa threshold berbeda antara dashboard/helper/status-checker. (Menutup CONF-008 / Q-012.)
 
 ### BR-35 — Identitas agent & auto-register
 - **Status:** CONFIRMED
 - **Rule:** device dikenali berurutan: `device_token` → `mac_address` → `hostname`; heartbeat pertama membuat device + asset `IT-PC-###` (category_id=1, status 'aktif').
 - **Evidence:** `Api\AgentController::heartbeat/findDeviceByIdentity/generateInventoryNo`.
 - **Affected Modules:** IT Devices, IT Assets.
-- **Notes:** asumsi `category_id=1` = kategori IT tak terverifikasi → Q-016. Agent API publik (CSRF-exempt); **menerima payload via GET** → CONF-025 / Q-025. State besar disimpan di kolom JSON `it_devices.cpu`.
+- **Notes:** asumsi `category_id=1` = kategori IT → Q-016 (masih NEED HUMAN DECISION — butuh data produksi; Laravel lookup by kode). Agent API publik (CSRF-exempt); **menerima payload via GET** → CONF-025 / Q-025 (masih NEED HUMAN DECISION). State besar disimpan di kolom JSON `it_devices.cpu`.
 
 ### BR-36 — Remote command queue
 - **Status:** CONFIRMED
@@ -371,25 +382,26 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Affected Modules:** IT Devices.
 - **Notes:** installer agent `EAMSAgent[Setup][-win7|-xp]-X.Y.Z.exe` di `public/downloads/agent`.
 
-**Gap (CONFIRMED, diperkuat Fase 0.6):** `ItDeviceLogModel` menunjuk tabel `it_device_logs` yang **TIDAK ADA di production DB** (`eams_database.sql`) dan tidak dipakai controller mana pun → dead model (CONF-DB-003). Tabel ini tidak perlu dibuat di Laravel.
+**Gap (CONFIRMED, Fase 0.6 + Fase 1):** `ItDeviceLogModel` menunjuk tabel `it_device_logs` yang **TIDAK ADA di production DB** dan tidak dipakai controller → dead model (CONF-DB-003). **Decision (Q-014):** tidak dibawa ke Laravel.
 
 ---
 
 ## 9. Reports & PDF
 
 **Aturan (CONFIRMED):**
-- Print/report per item type via `print_by_item/{type}` dengan **12 form print khusus + generic**, memakai pemetaan kolom dari teks pertanyaan.
-- Batch print per kategori/periode; export Excel tersedia pada beberapa report (progress, dsb.).
+- Print/report per item type via `print_by_item/{type}` dengan **12 form print khusus + generic**.
+- Batch print per kategori/periode; export Excel pada beberapa report.
 - PDF: mPDF via wrapper, transisi ke Dompdf; template di `app/Views/pdf/`.
-- Report checklist membaca status `ok`/`not_ok`/`na` (lihat BR-11 untuk ENUM production).
+- Report checklist membaca status `ok`/`not_ok`/`na` (BR-11).
 - Export PDAM/Boiler mewarnai hari libur (aturan offday BR-07) + total bulanan.
 
 - **Evidence:** `ComplianceReportController`; `app/Views/pdf/*`; `app/Libraries/` (PDF wrapper); `docs/11-reports-pdf.md`.
 - **Affected Modules:** Report, PDF, Export.
-- **Notes:**
-  - `PdfAccessFilter` + `Config\PdfPermission` (allowedRoles=['admin']) ada tapi **tidak dipasang** ke route `export/pdf/*` (hanya `auth`) → CONF-005 / Q-008.
-  - Pemetaan kolom print dari **teks pertanyaan** (bukan id stabil) → legacy rapuh (§17).
-  - Method `exportPeriodePage` tidak ter-rute & view `checklist/export_periode.php` tidak ada → Appendix C.
+- **Decision (Fase 1):**
+  - **Q-008:** PDF Compliance hanya untuk **Admin** + **user dengan akses Compliance**, via **permission-based** Gate/Policy (bukan hard-code role). (Menutup CONF-005 / Q-008.)
+  - **Q-015:** form print di-resolve via `asset_item_types.code` (bukan konstanta id); kolom via relasi stabil (bukan teks pertanyaan).
+  - **Q-018:** expiry field tampil terutama untuk APAR (by config), tidak auto-mengubah status.
+  - **Q-022:** file/attachment di storage configurable.
 
 ---
 
@@ -401,7 +413,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Behavior:** penerima ditentukan dari PIC pending checklist.
 - **Evidence:** `app/Commands/WeeklyChecklistWhatsappReminder.php`, `WeeklyChecklistEmailReminder.php`, `app/Libraries/NotificationService.php`.
 - **Affected Modules:** Notifications, Home, Progress.
-- **Notes:** **konflik mekanisme PIC** — WA command mencocokkan **nama** (parsing, min 1 kata cocok); email command memakai **relasi pics** (`assignedToUser`) → CONF-004 / Q-007.
+- **Notes:** **Decision terkait (Q-007):** penerima PIC memakai **relasi `compliance_inventory_pics`** sebagai source of truth (bukan parsing nama).
 
 ### BR-24 — Notifikasi in-app idempoten multi-kanal
 - **Status:** CONFIRMED
@@ -435,7 +447,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Affected Modules:** EMS, FDM.
 - **Notes:** label target hard-coded → kandidat setting di Laravel (catatan).
 
-**FDM (CONFIRMED):** sub-fitur "Production Section" aktif (input per section/line); 2 sub-fitur lain **placeholder "soon"**. **Perilaku khusus (legacy):** `ensureYears()` **men-INSERT** baris tahun berjalan s.d. +4 **saat GET** (write-on-read) → CONF-023 / §17.
+**FDM (CONFIRMED):** sub-fitur "Production Section" aktif; 2 sub-fitur lain **placeholder "soon"**. **Legacy:** `ensureYears()` INSERT tahun berjalan s.d. +4 **saat GET** (write-on-read) → CONF-023 / §17 (hilangkan di Laravel).
 
 ---
 
@@ -453,14 +465,14 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Rule:** beberapa entri per hari; index menampilkan SUM(polybag), SUM(kg) per tanggal; export bulanan menandai hari libur merah + total.
 - **Evidence:** `BoilerFuelController`.
 - **Affected Modules:** Boiler.
-- **Notes:** tabel `boiler_fuel_logs` tanpa migration → Q-002.
+- **Notes:** tabel `boiler_fuel_logs` verified di production (Q-002 RESOLVED Fase 0.6).
 
 ### BR-30 — IPAL upsert per tanggal
 - **Status:** CONFIRMED
 - **Rule:** upsert per tanggal; field: start/stop meter, pemakaian, keterangan.
 - **Evidence:** `IpalController::save`; **Production DB (Fase 0.6):** `UNIQUE KEY unique_log_date (log_date)`.
 - **Affected Modules:** IPAL.
-- **Notes:** **koreksi Fase 0.6** — audit awal menyebut "tanpa UNIQUE DB"; production ternyata MENEGAKKAN unique per tanggal (CONF-DB-004).
+- **Notes:** **koreksi Fase 0.6** — production MENEGAKKAN unique per tanggal (CONF-DB-004).
 
 ---
 
@@ -489,7 +501,7 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 - **Rule:** 3 jenis (database/files/full); penamaan `backup-{database|file|penuh|harian}-Ymd-His`; **retensi 30 hari**; full zip = `database.sql` + `manifest.json` + uploads; restore DB via mysqli multi_query; auto harian 01:00 via Windows `schtasks` "EAMS Daily Backup"; path Windows `D:\EAMS-Backups`.
 - **Evidence:** `app/Libraries/BackupManager.php`; `BackupController`; `app/Commands/DailyBackup.php`.
 - **Affected Modules:** Administration.
-- **Notes:** bergantung Windows/schtasks → di Laravel ganti Laravel Scheduler (catatan migrasi).
+- **Notes:** **Decision terkait (Q-022):** path backup **configurable** (tidak hard-code `D:\`); mekanisme di Laravel = Scheduler (menggantikan schtasks).
 
 ---
 
@@ -498,11 +510,11 @@ Lihat §10 Notifications (penomoran dipertahankan di sana).
 **Aturan (CONFIRMED):**
 - `app_settings` key-value menyimpan: profil perusahaan (nama, logo), SMTP (Google Workspace), WhatsApp/Fonnte (token, nomor, webhook), template pesan (placeholder `{{name}}/{{title}}/{{message}}/{{url}}/{{company}}/{{date}}`), flag `notification_email_enabled` / `notification_whatsapp_enabled`.
 - Self-service user: ganti password & kontak, tandai notifikasi terbaca — lewat halaman Settings (POST).
-- Nilai default diseed migration; nilai aktual produksi (token, template) ada di DB produksi → Q-018.
+- Nilai default diseed migration; nilai aktual produksi (token, template) ada di DB produksi → Q-018 (masih NEED HUMAN DECISION — butuh data produksi).
 
 - **Evidence:** `SettingController`; migration seeder `app_settings`; `docs/13-dependencies.md`.
 - **Affected Modules:** seluruh modul (konfigurasi).
-- **Notes:** self-service untuk user read-only terblokir WriteFilter → BR-43 / Q-021.
+- **Notes:** self-service untuk user read-only terblokir WriteFilter → BR-43 / Q-021 (masih NEED HUMAN DECISION).
 
 ---
 
@@ -512,20 +524,22 @@ Aturan yang dipakai banyak modul sekaligus (CONFIRMED):
 
 | # | Rule | Evidence | Dipakai oleh |
 |---|---|---|---|
-| S-01 | Period engine: period_key + late + editable + offday (BR-01..BR-08) | `period_helper.php`, `checklist_helper.php` | Checklist, Home, Progress, Ranking, Reminder, Report |
+| S-01 | Period engine: period_key + late + editable + offday | `period_helper.php`, `checklist_helper.php` | Checklist, Home, Progress, Ranking, Reminder, Report |
 | S-02 | Anti-duplikat per periode (BR-09) | `submitChecklist`, `save*Grid` | Checklist |
-| S-03 | not_ok wajib remark/foto (BR-10) | `submitChecklist`, `checklist.js` | Checklist, Evidence |
+| S-03 | not_ok wajib remark/foto (BR-10; grid bypass — Q-013) | `submitChecklist`, `checklist.js` | Checklist, Evidence |
 | S-04 | Nilai status ok/not_ok/na, ng→not_ok (BR-11) | `submitChecklist` | Checklist, Report, Evidence, Ranking |
-| S-05 | checked_by = nama string (BR-13) | semua penulis log | Checklist, Report, Ranking |
+| S-05 | checked_by = user_id + snapshot nama (Q-006) | semua penulis log | Checklist, Report, Ranking |
 | S-06 | Notifikasi idempoten via dedupe_key (BR-24) | `NotificationService` | Semua modul |
 | S-07 | WriteFilter global utk read-only (BR-42) | `WriteFilter` | Semua modul |
 | S-08 | Otorisasi tiga lapis (BR-41) & menu via page_access (BR-44) | `access_helper` | Semua modul |
-| S-09 | Offday & holidays untuk warna/perhitungan (BR-07) | `checklist_helper` | Checklist, PDAM, Boiler, Calendar |
+| S-09 | Offday & holidays (BR-07; Saturday effective 2026-04-01 — Q-005) | `checklist_helper` | Checklist, PDAM, Boiler, Calendar |
 | S-10 | Session 8 jam & audit auth (BR-40) | `AuthController`, `Session.php` | Global |
 | S-11 | CSRF aktif; pengecualian: `/api/agent/*`, kuesioner publik | `Filters.php`, `Security` config | Agent API, Questionnaire |
-| S-12 | Upload foto disimpan dgn nama acak di `public/uploads/...` | semua controller upload | Inventory, Checklist, Users, Thermal, Patrol |
+| S-12 | Upload foto → storage configurable, nama acak (Q-022) | semua controller upload | Inventory, Checklist, Users, Thermal, Patrol |
 | S-13 | Pagination default 20 (bisa dioverride `perPage`) | `index()` berbagai controller | Listing |
 | S-14 | Timezone Asia/Jakarta & format tanggal `Y-m-d`/`Y-m` konsisten | `App.php`, helpers | Global |
+| S-15 | Unified period status DONE/OPEN/LATE/FUTURE/HOLIDAY (Q-004) | engine periode (Fase 1) | Checklist, Dashboard, Calendar, Home |
+| S-16 | Item type behavior by `code`, bukan hard-id (Q-015) | `asset_item_types.code` | Checklist, Report, Grid |
 
 ---
 
@@ -533,50 +547,49 @@ Aturan yang dipakai banyak modul sekaligus (CONFIRMED):
 
 Pemisahan tegas **BUSINESS RULE vs LEGACY IMPLEMENTATION vs TECHNICAL DEBT**. Technical debt **bukan** business requirement dan **tidak** dibawa ke Laravel apa adanya.
 
-| Area | BUSINESS RULE (dipertahankan) | LEGACY IMPLEMENTATION (cara CI4 mengimplementasikan) | TECHNICAL DEBT (jangan diwarisi) |
+| Area | BUSINESS RULE (dipertahankan) | LEGACY IMPLEMENTATION | TECHNICAL DEBT (jangan diwarisi) |
 |---|---|---|---|
-| Periode weekly | Weekly dibagi W1–W4 per bulan | Helper memakai rentang tanggal 1–7 / 8–14 / 15–21 / 22–akhir | Dua helper `generate_calendar_periods` (rentang tetap vs kursor) — CONF-022 |
-| Status periode | Periode punya status tampil di kalender | `period_helper::resolve_period_status` (done/future/late/pending) | Fungsi ganda `period_status_helper` (done/holiday/locked/open) — CONF-002/Q-004 |
-| Status checklist | ok / not_ok / na; ng legacy dipetakan ke not_ok | Kode menulis `not_ok` | Migration ENUM `ok/ng/na` tidak cocok — **terselesaikan: production ENUM ok/not_ok/na** (CONF-001/Q-001 RESOLVED) |
-| Offday | Minggu libur; Sabtu libur mulai tgl efektif; + holidays | `is_weekend_offday` dgn tanggal efektif 2026-04-01 | `is_holiday` legacy (Sabtu+Min selalu libur) masih terautoload — CONF-003/Q-005 |
-| checked_by | Pencatat checklist tercatat | Disimpan sebagai **string nama** session | Bukan FK user; rentan duplikat nama — Q-006 |
-| PIC | Maks 2 PIC, PIC1 primary, notifikasi assignment | Kolom teks `pic` separator " - " + relasi `compliance_inventory_pics` | Dua mekanisme hidup berdampingan (reminder WA parse nama) — CONF-004/Q-007 |
-| QR | QR berisi URL detail + label kode aset | Gambar dari `api.qrserver.com` + overlay GD | Dependency eksternal; `endroid/qr-code` nganggur |
-| Koreksi grid | Koreksi sel mengubah log existing | `save*Grid` menulis `updated_at` | `updated_at` dibuang model & **kolom terbukti tidak ada di production** (Fase 0.6) — CONF-010/Q-023 RESOLVED |
-| Mark-all | Isi massal hanya sel kosong | Guard `isset($existingMap)` | `markAllHeatDetectorGrid` **menimpa** ok — CONF-009/Q-024 |
-| NA | NA bila item mengizinkan | Form via `allow_na` | Grid EL/EEL terima na; CCTV proteksi na; grid lain tolak — CONF-027/Q-020 |
-| Late | Periode lewat ambang dihitung late | `is_period_late` (+21/+28/+3 bln) | KPI dashboard pakai definisi history-based berbeda — CONF-014/Q-019 |
-| Grid khusus | 12 item type punya grid kustom | Konstanta `item_type_id` hard-coded (CCTV=13, dst.) | Pemetaan kolom dari **teks pertanyaan** (rename pertanyaan merusak grid/print) |
-| Inventory list | Daftar + filter + sort | Join kategori/item/area | `getBaseQuery` join item via `item_name` (bukan item_type_id) — CONF-018 |
-| Frekuensi | Frekuensi checklist per item type | `asset_item_types.checklist_frequency` | Kolom `checklist_master.frequency` ditulis seeder tapi diabaikan query aktif — CONF-021 |
-| PDF | Report dapat dicetak PDF | mPDF → Dompdf | `PdfAccessFilter` tidak terpasang; route `export/pdf/*` hanya `auth` — CONF-005/Q-008 |
-| Error 403 | Akses ditolak dialihkan | `redirect('/unauthorized')` di banyak controller | Route `/unauthorized` tidak terdaftar → 404 — CONF-007/Q-010 |
-| Kalender standalone | Kalender compliance menampilkan event | `ComplianceCalendarController` + view | Controller tak ter-rute; view memanggil `compliance/calendar/events` yang tak ada — CONF-019 |
-| Dashboard | KPI + grafik | `ComplianceDashboardController` | Route `risk-trend`/`data` → method tak ada; view `overdue.php` yatim — CONF-006/CONF-028 |
-| FDM | Data produksi per tahun | `ensureYears()` mengisi tahun berjalan s.d. +4 | INSERT terjadi **saat GET** (write-on-read) — CONF-023 |
-| Kuesioner | 2 template default tersedia | Bootstrap di **constructor** controller | Tulis DB saat construct (write-on-read) — CONF-024 |
-| Agent API | Agent heartbeat/command/update | Endpoint publik CSRF-exempt, token device plaintext | Menerima payload via **GET** (mutasi via GET) — CONF-025/Q-025 |
-| Read-only | User read-only tidak bisa mutasi | `WriteFilter` global | Self-service settings ikut terblokir — CONF-026/Q-021 |
-| Upload foto | Bukti foto disimpan | Validasi mime/size di beberapa modul | Foto checklist tanpa validasi; updatePhoto tanpa cek size — CONF-012/013/Q-026 |
-| Integritas DB | Relasi antar tabel | FK pada migration baru (audit_logs) | `notifications` sengaja tanpa FK ke users; kebijakan tak konsisten — CONF-011/Q-022 |
-| Famili checklist | (tidak ada — legacy murni) | — | Famili `compliance_checklist_*` **terbukti tidak ada di production** (Fase 0.6) → dead code — CONF-016/017/Q-014 RESOLVED |
+| Periode weekly | Weekly dibagi W1–W4 per bulan | Helper rentang tanggal 1–7/8–14/15–21/22–akhir | Dua helper `generate_calendar_periods` — CONF-022 (digabung, Q-004) |
+| Status periode | 1 engine status kanonik | `period_helper::resolve_period_status` | Fungsi ganda `period_status_helper` — CONF-002 (RESOLVED Q-004) |
+| Status checklist | ok / not_ok / na; ng→not_ok | Kode menulis `not_ok` | Migration ENUM `ok/ng/na` tidak cocok — RESOLVED (Q-001) |
+| Offday | Minggu libur; Sabtu libur mulai 2026-04-01; + holidays | `is_weekend_offday` dgn tanggal efektif | `is_holiday` legacy masih terautoload — CONF-003 (RESOLVED Q-005) |
+| checked_by | Pencatat checklist tercatat (user + nama) | String nama session | Bukan FK user — RESOLVED Q-006 (user_id + snapshot) |
+| PIC | Maks 2 PIC, kedudukan sama, notifikasi assignment | Kolom teks `pic` " - " + relasi pics | Dua mekanisme — RESOLVED Q-007 (pics = SoT, tanpa is_primary) |
+| QR | QR = URL detail + label kode aset | Gambar dari `api.qrserver.com` + overlay GD | Dependency eksternal — Q-021 (URL tetap; image boleh regenerate via paket lokal) |
+| Koreksi grid | Koreksi sel mengubah log existing | `save*Grid` menulis `updated_at` | `updated_at` dibuang & kolom tak ada — RESOLVED Q-023 (tambah updated_at + history table) |
+| Mark-all | Isi massal hanya sel kosong | Guard `isset($existingMap)` | `markAllHeatDetectorGrid` menimpa ok — Q-024 (masih NHD) |
+| NA | NA bila item mengizinkan (allow_na) | Form via `allow_na` | Grid tak konsisten terima na — RESOLVED Q-001 (NA di semua kanal bila allow_na) |
+| Late | Periode lewat ambang dihitung late | `is_period_late` (+21/+28/+3 bln) | KPI dashboard history-based — Q-019 (masih NHD) |
+| Grid khusus | Item type punya grid kustom | Konstanta `item_type_id` hard-coded | Pemetaan kolom dari teks pertanyaan — Q-015 (by code; kolom via relasi) |
+| Inventory list | Daftar + filter + sort | Join kategori/item/area | `getBaseQuery` join via `item_name` — CONF-018 (perbaiki di Laravel) |
+| Frekuensi | Frekuensi per item type | `asset_item_types.checklist_frequency` | Kolom `checklist_master.frequency` diabaikan — CONF-021 (drop) |
+| PDF | Report dapat dicetak PDF (admin + akses Compliance) | mPDF → Dompdf | `PdfAccessFilter` tak terpasang — RESOLVED Q-008 (permission-based) |
+| Error 403 | Akses ditolak dialihkan | `redirect('/unauthorized')` | Route tak terdaftar → 404 — Q-010 (technical: Laravel 403 view) |
+| Kalender standalone | Kalender menampilkan event | `ComplianceCalendarController` + view | Controller tak ter-rute; feed tak ada — CONF-019 (tabel events AKTIF via Holidays) |
+| Dashboard | KPI + grafik (fitur aktif saja) | `ComplianceDashboardController` | Route risk-trend/data → method tak ada — RESOLVED Q-009 (tidak dibawa) |
+| FDM | Data produksi per tahun | `ensureYears()` isi tahun s.d. +4 | INSERT saat GET (write-on-read) — CONF-023 (hilangkan) |
+| Kuesioner | 2 template default | Bootstrap di constructor | Tulis DB saat construct — CONF-024 (pindah ke seeder) |
+| Agent API | Agent heartbeat/command/update | Endpoint publik CSRF-exempt, token plaintext | Mutasi via GET — Q-025 (masih NHD) |
+| Read-only | User read-only tidak bisa mutasi | `WriteFilter` global | Self-service ikut terblokir — Q-021 (masih NHD) |
+| Upload foto | Bukti foto disimpan (storage configurable) | Validasi mime/size di beberapa modul | Foto checklist tanpa validasi — Q-026 (technical: validasi terpusat) |
+| Integritas DB | Relasi antar tabel | FK pada migration baru | `notifications` tanpa FK; kebijakan tak konsisten — Q-022 (technical: strategi FK schema baru) |
+| Famili checklist | (tidak ada — legacy murni) | — | Famili `compliance_checklist_*` tak ada di production — RESOLVED Q-014 (tidak dibawa) |
 
-**Dead code terkonfirmasi (tidak dibawa ke Laravel):** `Home.php`, `ComplianceChecklistController`, `ComplianceCalendarController`, `AssetItemTypeController::byCategory`, `exportPeriodePage`, `qrBatch`, view `dashboard.php` (0 byte), `welcome_message.php`, `overdue.php`, route `compliance/inventory/create` & `edit/(:num)` (method tak ada — UI memakai modal), route `compliance/calendar/events`, filter `pdfAccess` (tak terpasang), tabel `it_device_logs` (tanpa writer), kolom `checklist_master.frequency`, helper `it_health_helper` & `period_status_helper` & `calender_period_helper` (duplikat).
+**Dead code terkonfirmasi (tidak dibawa ke Laravel):** `Home.php`, `ComplianceChecklistController`, `ComplianceCalendarController`, `AssetItemTypeController::byCategory`, `exportPeriodePage`, `qrBatch`, view `dashboard.php` (0 byte), `welcome_message.php`, `overdue.php`, route `compliance/inventory/create` & `edit/(:num)`, route `compliance/calendar/events`, route `risk-trend`/`data` (Q-009), filter `pdfAccess` (diganti permission-based), tabel `it_device_logs`, famili `compliance_checklist_*` (Q-014), kolom `checklist_master.frequency`, helper `it_health_helper` & `period_status_helper` & `calender_period_helper`.
 
 ---
 
 ## 18. Unresolved Decisions
 
-Seluruh keputusan manusia terdaftar di **`docs/15-ambiguities-need-decision.md`** (Final Decision List). Ringkasan prioritas:
+Seluruh keputusan manusia terdaftar di **`docs/15-ambiguities-need-decision.md`** (Final Decision List); keputusan final lengkap di **`docs/19-decision-log.md`**. Ringkasan status **setelah Fase 1**:
 
-| Prioritas | Jumlah | Item |
+| Status | Jumlah | Item |
 |---|---|---|
-| **Critical** (wajib sebelum Laravel coding) | 3 | Q-004, Q-006, Q-007 |
-| **Important** (sebelum modul terkait dibuat) | 11 | Q-005, Q-008, Q-009, Q-012, Q-013, Q-016, Q-017, Q-018, Q-019, Q-020, Q-024 |
-| **Minor** (bisa saat implementasi) | 7 | Q-010, Q-011, Q-015, Q-021, Q-022, Q-025, Q-026 |
-| **RESOLVED BY PRODUCTION SCHEMA** (Fase 0.6, `eams_database.sql`) | 5 | Q-001, Q-002, Q-003, Q-014, Q-023 |
+| **RESOLVED** | 15 | Q-001, Q-002, Q-003, Q-004, Q-005, Q-006, Q-007, Q-008, Q-009, Q-012, Q-013, Q-014, Q-017, Q-020, Q-023 |
+| **TECHNICAL DECISION** (architecture phase, `docs/20`) | 3 | Q-010, Q-022, Q-026 |
+| **NEED HUMAN DECISION** (tersisa) | 8 | Q-011, Q-015, Q-016, Q-018, Q-019, Q-021, Q-024, Q-025 |
 
-**Total: 26 item — 5 terselesaikan oleh production schema, 21 masih membutuhkan keputusan manusia.** Tidak ada satu pun yang diputuskan oleh dokumen ini.
+**Total: 26 item — 15 terselesaikan (5 via production schema Fase 0.6 + 10 via human decision Fase 1), 3 dipindahkan ke architecture phase, 8 masih membutuhkan keputusan manusia.** Rule yang diputuskan stakeholder telah diberi field **Decision** pada bagian masing-masing.
 
 ---
 
@@ -618,7 +631,7 @@ Backup & Admin tools (schtasks → Laravel Scheduler)
 3. Master data: areas, inventory_categories, asset_item_types, **holidays**
 4. Compliance inventory + PIC + QR
 5. Checklist master + engine periode + checklist_logs
-6. Kanal pengisian: form → generic grid → grid khusus (prioritas daily: CCTV, First Aid Content, Gate)
+6. Kanal pengisian: form (standard) → generic grid → grid khusus (prioritas daily: CCTV, First Aid Content, Gate)
 7. Home, dashboard, progress, ranking, evidence
 8. Report + PDF/print + export Excel
 9. Reminder & notifikasi (WA/email, dedupe)
@@ -633,287 +646,94 @@ Backup & Admin tools (schtasks → Laravel Scheduler)
 
 ## Appendix A — Contradiction Register
 
-Setiap konflik ditemukan saat cross-check Fase 0.5. Format: Topic / Source A / Source B / Conflict / Current Runtime Behavior / Business Meaning. **Tidak ada yang diputuskan di sini.**
+Setiap konflik ditemukan saat cross-check Fase 0.5. Format: Topic / Source A / Source B / Conflict / Current Runtime Behavior / Business Meaning. (Fase 0.6 & Fase 1: banyak yang terselesaikan — ditandai RESOLVED dengan sumbernya.)
+
+Ringkasan 28 konflik (CONF-001 s/d CONF-028) dengan status setelah Fase 1:
+
+| ID | Topic | Status (setelah Fase 1) |
+|---|---|---|
+| CONF-001 | ENUM `checklist_logs.status` (ok/ng/na vs not_ok) | ✅ RESOLVED — production ENUM ok/not_ok/na (Q-001) |
+| CONF-002 | Engine status periode ganda | ✅ RESOLVED — satu engine DONE/OPEN/LATE/FUTURE/HOLIDAY (Q-004) |
+| CONF-003 | Aturan Sabtu (is_weekend_offday vs is_holiday) | ✅ RESOLVED — Saturday effective 2026-04-01, tidak retroaktif (Q-005) |
+| CONF-004 | Sumber kebenaran PIC (relasi vs nama) | ✅ RESOLVED — pics = SoT, maks 2, tanpa primary (Q-007) |
+| CONF-005 | pdfAccess tak terpasang | ✅ RESOLVED — PDF utk admin + akses Compliance, permission-based (Q-008) |
+| CONF-006 | Route dashboard → method hilang (risk trend) | ✅ RESOLVED — tidak dibawa (Q-009) |
+| CONF-007 | `/unauthorized` tidak terdaftar | TECHNICAL — Laravel halaman 403 (Q-010) |
+| CONF-008 | Threshold online 600s vs 48 jam | ✅ RESOLVED — 10 menit, centralized config (Q-012) |
+| CONF-009 | Mark-all Heat Detector menimpa | NEED HUMAN DECISION (Q-024) |
+| CONF-010 | `updated_at` dead write di grid | ✅ RESOLVED — kolom tak ada di production; Laravel tambah updated_at + history (Q-023) |
+| CONF-011 | FK ke users (audit_logs vs notifications) | TECHNICAL — strategi FK schema baru (Q-022) |
+| CONF-012 | Foto checklist tanpa validasi | TECHNICAL — validasi upload terpusat (Q-026) |
+| CONF-013 | updatePhoto tanpa cek size | TECHNICAL — validasi upload terpusat (Q-026) |
+| CONF-014 | Definisi late (time vs history) | NEED HUMAN DECISION (Q-019) |
+| CONF-015 | check_date per kanal | terdokumentasi (BR-17) — ikut desain ranking |
+| CONF-016 | Model vs migration compliance_checklist | ✅ RESOLVED — famili tak ada di production (Q-014) |
+| CONF-017 | Dua famili tabel checklist | ✅ RESOLVED — hanya `checklist_*` di production (Q-014) |
+| CONF-018 | getBaseQuery join via item_name | jelas (legacy bug-risk) — perbaiki di Laravel (by id/code) |
+| CONF-019 | Feed kalender standalone tanpa route | jelas (dead); tabel events AKTIF via Holidays (koreksi Fase 0.6) |
+| CONF-020 | Route create/edit → method hilang | jelas (dead routes) — kanonik = modal workflow |
+| CONF-021 | Kolom checklist_master.frequency tak dipakai | jelas (legacy column) — drop (Q-003 policy) |
+| CONF-022 | generate_calendar_periods ganda | ✅ RESOLVED — satu engine periode (Q-004) |
+| CONF-023 | FDM write-on-read (ensureYears) | terdokumentasi (legacy) — hilangkan di Laravel |
+| CONF-024 | Kuesioner bootstrap di constructor | terdokumentasi (legacy) — pindah ke seeder |
+| CONF-025 | Agent API mutasi via GET | NEED HUMAN DECISION (Q-025) |
+| CONF-026 | Read-only self-service terblokir | NEED HUMAN DECISION (Q-021) |
+| CONF-027 | Dukungan NA per kanal | ✅ RESOLVED — NA di semua kanal bila allow_na (Q-001) |
+| CONF-028 | View overdue yatim | jelas (dead view) |
+
+> Detail lengkap tiap CONF (Source A/B, Conflict, Runtime Behavior) tersedia di repo `eams-v4` → `docs/17-business-specification.md` Appendix A (versi lengkap).
 
 ---
 
-**CONF-001**
-- **Topic:** nilai status `checklist_logs`
-- **Source A:** migration `2026-01-20-000003` → `status ENUM('ok','ng','na') DEFAULT 'ok'`
-- **Source B:** `submitChecklist` + semua `save*Grid` menulis `'not_ok'`; report/evidence membaca `'not_ok'`
-- **Conflict:** DDL repo tidak bisa menampung nilai yang kode tulis
-- **Current Runtime Behavior:** production DB = `enum('ok','not_ok','na')` (terbukti Fase 0.6)
-- **Business Meaning:** **RESOLVED BY PRODUCTION SCHEMA (Fase 0.6):** production `status enum('ok','not_ok','na') NOT NULL DEFAULT 'ok'` — kode konsisten; DB sudah diubah dari migration awal (docs/18 CONF-DB-001)
+## Appendix B — Module Completeness Checklist (cross-check Fase 0.5, diperbarui Fase 1)
 
-**CONF-002**
-- **Topic:** semantik status periode kalender
-- **Source A:** `period_helper::resolve_period_status` → done/future/late/pending
-- **Source B:** `period_status_helper::resolve_period_status` → done/holiday/locked/open
-- **Conflict:** dua fungsi bernama sama, hasil berbeda, keduanya terautoload
-- **Current Runtime Behavior:** yang termuat lebih dulu yang menang (`period`)
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-004)
-
-**CONF-003**
-- **Topic:** aturan Sabtu
-- **Source A:** `checklist_helper::is_weekend_offday` → Sabtu libur hanya ≥ 2026-04-01
-- **Source B:** `holiday_helper::is_holiday` → Sabtu+Minggu selalu libur
-- **Conflict:** dua aturan offday berbeda untuk tanggal historis
-- **Current Runtime Behavior:** jalur checklist memakai Source A; `period_status_helper` memakai Source B
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-005)
-
-**CONF-004**
-- **Topic:** sumber kebenaran PIC
-- **Source A:** relasi `compliance_inventory_pics` (is_primary, notifikasi, `assignedToUser`)
-- **Source B:** kolom teks `pic` diparse nama (REGEXP/LIKE) oleh `ProgressController` & reminder WA
-- **Conflict:** dua mekanisme PIC aktif untuk progres/reminder
-- **Current Runtime Behavior:** keduanya berjalan; hasil bisa berbeda bila nama berubah/duplikat
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-007)
-
-**CONF-005**
-- **Topic:** pembatasan akses PDF
-- **Source A:** `PdfAccessFilter` + `Config\PdfPermission::$allowedRoles=['admin']` ada
-- **Source B:** route `export/pdf/*` hanya memakai filter `auth`
-- **Conflict:** filter PDF didefinisikan tapi tidak pernah dipasang
-- **Current Runtime Behavior:** semua user login bisa akses PDF
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-008)
-
-**CONF-006**
-- **Topic:** endpoint dashboard
-- **Source A:** Routes `compliance/dashboard/risk-trend → getRiskTrendAjax`, `.../data → ajaxData`
-- **Source B:** `ComplianceDashboardController` tidak memiliki kedua method tsb
-- **Conflict:** route menunjuk method yang tidak ada
-- **Current Runtime Behavior:** memanggilnya → error 500; `dashboard.js` berpotensi memanggil
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-009)
-
-**CONF-007**
-- **Topic:** halaman akses ditolak
-- **Source A:** banyak controller `redirect()->to('/unauthorized')`
-- **Source B:** Routes.php tidak mendaftarkan `/unauthorized`
-- **Conflict:** target redirect tidak ada
-- **Current Runtime Behavior:** 404 (bukan halaman 403)
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-010)
-
-**CONF-008**
-- **Topic:** ambang online device
-- **Source A:** `device_helper::device_is_online` → ≥ 48 jam
-- **Source B:** `Commands/DeviceStatusCheck` → offline bila > 600 dtk
-- **Conflict:** dua definisi online/offline
-- **Current Runtime Behavior:** UI & command tidak sinkron
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-012)
-
-**CONF-009**
-- **Topic:** perilaku mark-all
-- **Source A:** semua `markAll*Grid` → skip sel terisi ("tidak ditimpa")
-- **Source B:** `markAllHeatDetectorGrid` → **meng-update** existing ke `ok`
-- **Conflict:** satu grid menimpa, yang lain tidak
-- **Current Runtime Behavior:** Heat Detector menimpa status ok existing
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-024)
-
-**CONF-010**
-- **Topic:** kolom `updated_at` pada checklist_logs
-- **Source A:** 12+ lokasi `save*Grid` menulis `'updated_at' => date('Y-m-d H:i:s')` (terverifikasi via grep)
-- **Source B:** `ChecklistLogModel::$allowedFields` tidak memuat `updated_at`; migration hanya membuat `created_at`
-- **Conflict:** penulisan yang dibuang diam-diam (CI4 memfilter ke allowedFields)
-- **Current Runtime Behavior:** tidak error; nilai `updated_at` hilang
-- **Business Meaning:** **RESOLVED BY PRODUCTION SCHEMA (Fase 0.6):** kolom `updated_at` TIDAK ADA di production → **LEGACY CODE WRITES NON-PERSISTED FIELD** (docs/18 CONF-DB-015); jangan otomatis menambah kolom di Laravel
-
-**CONF-011**
-- **Topic:** foreign key ke tabel users
-- **Source A:** migration `audit_logs` membuat FK ke `users(id)`
-- **Source B:** migration `notifications` sengaja tanpa FK — komentar "legacy users table differs between installations (signedness, engine, id type)"
-- **Conflict:** kebijakan berlawanan terhadap tabel legacy yang sama
-- **Current Runtime Behavior (koreksi Fase 0.6):** di production, `audit_logs` **TANPA FK** ke users (hanya PK) — FK yang dideklarasikan migration tidak terbentuk/di-drop (docs/18 CONF-DB-006); notifications memang tanpa FK → production konsisten tanpa FK ke users
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-022) — keputusan kebijakan FK di Laravel tetap terbuka
-
-**CONF-012**
-- **Topic:** validasi foto checklist
-- **Source A:** `submitChecklist` memindahkan foto tanpa validasi mime/size
-- **Source B:** upload user/asset/thermal/employee divalidasi mime (+ size)
-- **Conflict:** satu jalur upload tanpa validasi
-- **Current Runtime Behavior:** sembarang file bisa terunggah sebagai "foto" checklist
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-026)
-
-**CONF-013**
-- **Topic:** validasi ukuran foto inventory
-- **Source A:** `ComplianceInventoryController::updatePhoto` validasi mime saja
-- **Source B:** ITAsset/Employee validasi mime + size 2MB
-- **Conflict:** standar validasi upload tidak seragam
-- **Current Runtime Behavior:** foto inventory berukuran besar diterima
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-026)
-
-**CONF-014**
-- **Topic:** definisi "late"
-- **Source A:** `period_helper::is_period_late` → time-based (+21 hari / +28 hari / +3 bulan)
-- **Source B:** `ComplianceDashboardController` KPI late → history-based (punya histori, belum ada log periode aktif)
-- **Conflict:** dua definisi late menghasilkan angka berbeda
-- **Current Runtime Behavior:** KPI dashboard ≠ badge/reminder
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-019)
-
-**CONF-015**
-- **Topic:** nilai check_date
-- **Source A:** `submitChecklist` → `check_date = hari ini`
-- **Source B:** grid daily (CCTV) → `check_date = period_key`; weekly → `bulan-01`; monthly → `period-01`
-- **Conflict:** tanggal pemeriksaan berbeda per kanal → memengaruhi on-time (BR-18)
-- **Current Runtime Behavior:** ranking bisa berbeda tergantung kanal pengisian
-- **Business Meaning:** terdokumentasi (BR-17); **tidak butuh keputusan terpisah** — ikut keputusan desain ranking di Laravel
-
-**CONF-016**
-- **Topic:** model vs migration (famili compliance_checklist)
-- **Source A:** `ComplianceChecklistLogModel` mendefinisikan kolom `inspection_week/month/year`
-- **Source B:** migration `compliance_checklist_logs` membuat `schedule_id/template_id/check_date`
-- **Conflict:** model dan migration tidak cocok (dead code path)
-- **Current Runtime Behavior:** jalur ini tidak ter-rute (tidak dieksekusi)
-- **Business Meaning:** **RESOLVED BY PRODUCTION SCHEMA (Fase 0.6):** famili `compliance_checklist_*` TIDAK ADA di production → dead code (Q-014 RESOLVED, docs/18 CONF-DB-002)
-
-**CONF-017**
-- **Topic:** dua famili tabel checklist
-- **Source A:** `checklist_*` (checklist_logs, checklist_master) — dipakai route aktif
-- **Source B:** `compliance_checklist_*` (master, logs, log_items) — model ada, route tidak memakai
-- **Conflict:** dua skema paralel untuk domain yang sama
-- **Current Runtime Behavior:** hanya `checklist_*` yang hidup
-- **Business Meaning:** **RESOLVED BY PRODUCTION SCHEMA (Fase 0.6):** hanya famili `checklist_*` yang ada di production; famili `compliance_checklist_*` tidak ada → dead code (Q-014 RESOLVED)
-
-**CONF-018**
-- **Topic:** join item pada daftar inventory
-- **Source A:** `ComplianceInventoryModel::getBaseQuery` join `asset_item_types` via `item_name`
-- **Source B:** seluruh kode lain join via `item_type_id`
-- **Conflict:** join berbasis nama (rentan duplikat/rename) vs id
-- **Current Runtime Behavior:** listing tetap jalan selama nama unik
-- **Business Meaning:** jelas (legacy bug-risk); **tidak butuh keputusan bisnis** — perbaiki di Laravel
-
-**CONF-019**
-- **Topic:** feed kalender standalone
-- **Source A:** view kalender memakai `data-events-url="compliance/calendar/events"`
-- **Source B:** route tsb tidak terdaftar; `ComplianceCalendarController` tidak ter-rute
-- **Conflict:** UI memanggil endpoint yang tidak ada
-- **Current Runtime Behavior:** kalender standalone tidak dapat memuat event (juga tidak dapat diakses)
-- **Business Meaning:** jelas (dead feature); **tidak butuh keputusan bisnis** — kalender aktif = Holidays + kalender checklist. (Koreksi Fase 0.6: tabel `compliance_calendar_events` AKTIF via HolidayController — CONF-DB-022)
-
-**CONF-020**
-- **Topic:** route create/edit inventory
-- **Source A:** Routes `compliance/inventory/create → create`, `compliance/inventory/edit/(:num) → edit`
-- **Source B:** `ComplianceInventoryController` **tidak memiliki** method `create()`/`edit()` (terverifikasi via grep, Fase 0.5)
-- **Conflict:** route menunjuk method yang tidak ada
-- **Current Runtime Behavior:** mengaksesnya → error; UI nyata memakai modal (bukan halaman)
-- **Business Meaning:** jelas (dead routes); kanonik = **modal workflow** (BR-45/BR-46); tidak butuh keputusan bisnis
-
-**CONF-021**
-- **Topic:** kolom `checklist_master.frequency`
-- **Source A:** seeder menulis `frequency` per pertanyaan; kolom ada di allowedFields
-- **Source B:** query aktif hanya memfilter `item_type_id + active`; frekuensi efektif = `asset_item_types.checklist_frequency`
-- **Conflict:** kolom frekuensi per pertanyaan tidak dipakai
-- **Current Runtime Behavior:** frekuensi per item type yang berlaku (kolom frequency ADA di production — CONF-DB-023, tapi tak dibaca)
-- **Business Meaning:** jelas (legacy column); **tidak butuh keputusan bisnis**
-
-**CONF-022**
-- **Topic:** generator kalender periode
-- **Source A:** `period_helper`/`checklist_helper generate_calendar_periods` → rentang tetap (W1:1–7 dst.)
-- **Source B:** `calender_period_helper generate_calendar_periods` → model kursor 7-hari
-- **Conflict:** dua generator untuk hal yang sama
-- **Current Runtime Behavior:** yang terautoload lebih dulu menang
-- **Business Meaning:** **NEED HUMAN DECISION** — diselesaikan bersama Q-004 (satu engine periode)
-
-**CONF-023**
-- **Topic:** efek samping tulis pada GET (FDM)
-- **Source A:** `FdmDataCollectionController::productionSection` adalah endpoint GET
-- **Source B:** `ensureYears()` di dalamnya **INSERT** baris tahun berjalan s.d. +4
-- **Conflict:** read menimbulkan write
-- **Current Runtime Behavior:** membuka halaman FDM menambah baris tahun
-- **Business Meaning:** terdokumentasi (legacy); **tidak butuh keputusan bisnis** — hilangkan di Laravel
-
-**CONF-024**
-- **Topic:** efek samping tulis pada construct (kuesioner)
-- **Source A:** controller kuesioner seharusnya murni melayani request
-- **Source B:** constructor me-bootstrap 2 template default ke DB bila belum ada
-- **Conflict:** tulis DB saat construct
-- **Current Runtime Behavior:** kunjungan pertama ke halaman kuesioner men-seed template
-- **Business Meaning:** terdokumentasi (legacy); pindah ke seeder di Laravel
-
-**CONF-025**
-- **Topic:** metode HTTP agent API
-- **Source A:** mutasi state seharusnya POST
-- **Source B:** `Api\AgentController::resolvePayload` menerima payload dari **query GET** (bila device_token/hostname/mac ada) untuk heartbeat/command
-- **Conflict:** mutasi state dapat dipicu GET
-- **Current Runtime Behavior:** GET `/api/agent/heartbeat?...` mengubah last_seen/state
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-025 — cek kompatibilitas agent lama)
-
-**CONF-026**
-- **Topic:** self-service untuk user read-only
-- **Source A:** halaman Settings menyediakan ganti password/kontak untuk semua user
-- **Source B:** `WriteFilter` memblokir semua POST non-whitelist untuk permission `read` (termasuk `/settings`)
-- **Conflict:** fitur self-service tidak dapat dipakai user read-only
-- **Current Runtime Behavior:** read-only user mendapat 403 saat ganti password / tandai notifikasi
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-021)
-
-**CONF-027**
-- **Topic:** dukungan status NA per kanal
-- **Source A:** form per-item menerima `na` bila `allow_na`; grid EL/EEL menerima mode `na`
-- **Source B:** grid CCTV menolak ubah sel `na` (409); grid lain (APAR, Hydrant, dst., generic) tidak menerima mode `na`
-- **Conflict:** NA hanya bisa lewat kanal tertentu
-- **Current Runtime Behavior:** dukungan NA tergantung item type & kanal
-- **Business Meaning:** **NEED HUMAN DECISION** (Q-020)
-
-**CONF-028**
-- **Topic:** view overdue yatim
-- **Source A:** `app/Views/compliance/dashboard/overdue.php` (tabel "Checklist Overdue") ada di repo
-- **Source B:** tidak ada controller yang merendernya; link internalnya menuju `compliance/inventory/{id}` yang juga tidak terdaftar
-- **Conflict:** view nyata tanpa jalur render & dengan link rusak
-- **Current Runtime Behavior:** tidak pernah tampil
-- **Business Meaning:** jelas (dead view); tidak butuh keputusan bisnis
-
----
-
-## Appendix B — Module Completeness Checklist (cross-check Fase 0.5)
-
-Kolom wajib: purpose, actor, workflow, business rules, database, controller, model, view, JS/AJAX, permission, report/output, dependency.
-
-| Module | Lengkap? | Catatan gap |
+| Module | Lengkap? | Catatan gap (setelah Fase 1) |
 |---|---|---|
 | M-01 Authentication | ✅ | — |
 | M-02 Home & Notifications | ✅ | — |
-| M-03 Master Data | ✅ | kolom `checklist_frequency`/`allow_na` verified di production (Q-003 RESOLVED Fase 0.6) |
-| M-04 Compliance Inventory + QR | ⚠️ | route create/edit → method hilang (CONF-020); `qrBatch` tak ter-rute |
-| M-05 Checklist Master | ⚠️ | kolom `frequency` tak dipakai (CONF-021; kolom ADA di production, CONF-DB-023) |
-| M-06 Checklist Execution | ⚠️ | engine periode ganda (CONF-002/022); NA per kanal (CONF-027) |
-| M-07 Compliance Dashboard | ❌ | 2/8 endpoint AJAX mati (CONF-006); definisi late (CONF-014); view overdue yatim (CONF-028) |
-| M-08 Progress Monitoring | ✅ | — |
-| M-09 Ranking | ✅ | — |
-| M-10 Evidence & Follow-up | ✅ | kolom `follow_up_*` verified di production (Q-003 RESOLVED Fase 0.6) |
-| M-11 Report & PDF/Print | ⚠️ | pdfAccess tak terpasang (CONF-005); pemetaan kolom dari teks pertanyaan |
-| M-12 Calendar | ⚠️ | controller standalone mati (CONF-019); tabel `compliance_calendar_events` AKTIF via Holidays (koreksi CONF-DB-022, Fase 0.6) |
+| M-03 Master Data | ✅ | kolom verified di production (Q-003) |
+| M-04 Compliance Inventory + QR | ⚠️ | route create/edit dead (modal kanonik); QR URL tetap (Q-021) |
+| M-05 Checklist Master | ⚠️ | kolom `frequency` tak dipakai (drop — Q-003) |
+| M-06 Checklist Execution | ⚠️ | engine periode digabung (Q-004); NA konsisten (Q-001); 2 mode resmi (Q-016) |
+| M-07 Compliance Dashboard | ⚠️ | risk-trend dead tidak dibawa (Q-009); definisi late (Q-019 NHD); view overdue yatim |
+| M-08 Progress Monitoring | ✅ | PIC via relasi (Q-007) |
+| M-09 Ranking | ✅ | checked_by user_id+snapshot (Q-006) |
+| M-10 Evidence & Follow-up | ✅ | kolom verified (Q-003); + history table (Q-023) |
+| M-11 Report & PDF/Print | ⚠️ | PDF permission-based (Q-008); kolom via code/relasi (Q-015) |
+| M-12 Calendar | ⚠️ | controller standalone dead; tabel events AKTIF via Holidays (koreksi Fase 0.6) |
 | M-13 Thermal Imaging | ✅ | — |
-| M-14 Questionnaire | ⚠️ | bootstrap di constructor (CONF-024) |
+| M-14 Questionnaire | ⚠️ | bootstrap di constructor → pindah seeder (CONF-024) |
 | M-15 EMS / GHG | ✅ | — |
 | M-16 FDM | ⚠️ | 2/3 sub-fitur placeholder "soon"; write-on-read (CONF-023) |
-| M-17 Boiler / IPAL / PDAM | ✅ | tabel boiler & ipal verified di production (Q-002 RESOLVED Fase 0.6) |
+| M-17 Boiler / IPAL / PDAM | ✅ | tabel verified (Q-002) |
 | M-18 IT Assets & Employees | ✅ | — |
-| M-19 IT Device Monitoring | ❌ | tabel `it_device_logs` TIDAK ADA di production (dead model, CONF-DB-003); threshold ganda (CONF-008); GET mutating (CONF-025); category_id=1 (Q-016) |
+| M-19 IT Device Monitoring | ⚠️ | it_device_logs tidak dibawa (Q-014); threshold 10 mnt (Q-012); category_id=1 (Q-016 NHD); GET mutating (Q-025 NHD) |
 | M-20 Patrol Security | ✅ | — |
-| M-21 Backup | ⚠️ | bergantung Windows schtasks + path `D:\` (deployment-specific) |
+| M-21 Backup | ⚠️ | schtasks → Laravel Scheduler; path configurable (Q-022) |
 | M-22 Administration (Users/Audit/Settings) | ✅ | — |
 
-**Ringkasan:** 16 modul lengkap, 5 modul dengan gap parsial (⚠️), 2 modul dengan gap signifikan (❌: M-07, M-19). Tidak ada modul yang hilang total — semua terdokumentasi di `docs/02-modules.md`. (Fase 0.6: M-12 turun dari ❌ ke ⚠️ karena tabel events ternyata aktif via HolidayController.)
+**Ringkasan (Fase 1):** 16 modul lengkap, 6 ⚠️, 0 ❌ (M-07 & M-19 naik dari ❌ ke ⚠️ setelah keputusan menutup gap utama). Tidak ada modul hilang total.
 
 ---
 
-## Appendix C — Database & Route Gap Register (cross-check Fase 0.5, diperbarui Fase 0.6)
+## Appendix C — Database & Route Gap Register (diperbarui Fase 1)
 
 ### C.1 Database gaps
-1. **Tabel dasar tanpa migration — RESOLVED Fase 0.6:** production export (`eams_database.sql`) memverifikasi seluruh tabel dasar ADA dengan DDL lengkap (lihat docs/03 versi production-verified); **kecuali** `it_device_logs` & famili `compliance_checklist_*` yang terbukti TIDAK ADA di production (dead code) → Q-002 RESOLVED.
-2. **Kolom dipakai kode tanpa migration — RESOLVED Fase 0.6:** seluruhnya terverifikasi ADA di production dengan tipe pasti (`checklist_frequency` ENUM default 'monthly', `allow_na` tinyint, `time_slot` varchar(5), `follow_up_status` ENUM default 'open', `permission` ENUM('read','write'), `wa_number`, `photo`, `active`, `cpu` longtext) → Q-003 RESOLVED. Pengecualian: `checklist_logs.updated_at` terbukti **tidak ada** (dead write, CONF-DB-015).
-3. **ENUM konflik:** `checklist_logs.status` (CONF-001) — RESOLVED Fase 0.6 (production ENUM ok/not_ok/na).
-4. **FK diasumsikan tanpa constraint:** hampir semua relasi lintas tabel hanya konvensi; kebijakan tak konsisten (CONF-011); di production `audit_logs` pun TANPA FK ke users (CONF-DB-006).
-5. **Unique constraint — production verified (Fase 0.6):** `asset_code` UNIQUE ADA (`uniq_asset_code`, koreksi CONF-DB-005); `users.username` UNIQUE ADA (CONF-DB-016); `ipal_logs.log_date` UNIQUE ADA (CONF-DB-004). Yang tetap **application-level**: `checklist_logs (inventory_id, period_key[, time_slot])`, `holidays.holiday_date`, `users.email`, `it_device_commands.command_id` (KEY non-unique), `asset_item_types.code`.
-6. **Nullable/default tak diketahui — RESOLVED Fase 0.6:** seluruh nullable/default kini diketahui dari production export (docs/03).
+1. **Tabel dasar — RESOLVED:** production export memverifikasi DDL lengkap; `it_device_logs` & famili `compliance_checklist_*` terbukti tidak ada (Q-002/Q-014).
+2. **Kolom tanpa migration — RESOLVED:** seluruhnya verified dari production (Q-003); `checklist_logs.updated_at` tidak ada → Laravel menambah `updated_at` + history table (Q-023).
+3. **ENUM:** `checklist_logs.status` RESOLVED (Q-001); `compliance_inventory.status` → enum GOOD/NEED_REPAIR/NOT_ACTIVE (Q-017).
+4. **FK:** kebijakan tak konsisten legacy → strategi FK schema baru (Q-022 technical).
+5. **Unique:** `asset_code`, `users.username`, `ipal_logs.log_date` UNIQUE verified; dedup checklist tetap application-level (candidate UNIQUE di Laravel, `docs/20` §5).
+6. **Nullable/default:** seluruhnya diketahui dari production (docs/03).
 
 ### C.2 Route/controller gaps
-1. **Route → method hilang (4):** `compliance/dashboard/risk-trend`, `compliance/dashboard/data`, `compliance/inventory/create`, `compliance/inventory/edit/(:num)`.
-2. **Method tanpa route:** `qrBatch`, `exportPeriodePage`, seluruh `ComplianceChecklistController`, seluruh `ComplianceCalendarController`, `AssetItemTypeController::byCategory`, `Home::index`.
-3. **UI memanggil endpoint tak ditemukan:** `dashboard.js` → risk-trend/data; view kalender → `compliance/calendar/events`; `overdue.php` → `compliance/inventory/{id}`.
-4. **View yatim (4):** `compliance/dashboard/overdue.php`, `dashboard.php` (0 byte), `welcome_message.php`, `checklist/export_periode.php` (direferensikan method dead).
-5. **Inkonsistensi permission:** `pdfAccess` tak terpasang (Q-008); `/unauthorized` 404 (Q-010); grid CCTV membolehkan staff/auditor membaca sedangkan grid lain admin/compliance; hanya `employees/unassign` yang memakai filter `write` eksplisit (sisanya bergantung WriteFilter global).
+1. **Route → method hilang:** `risk-trend`, `data` (tidak dibawa — Q-009), `inventory/create`, `edit/(:num)` (modal kanonik).
+2. **Method tanpa route:** `qrBatch`, `exportPeriodePage`, `ComplianceChecklistController`, `ComplianceCalendarController`, `byCategory`, `Home::index` (tidak dibawa).
+3. **UI → endpoint tak ada:** `dashboard.js` → risk-trend/data; kalender → `calendar/events`; `overdue.php` → `inventory/{id}`.
+4. **View yatim:** `overdue.php`, `dashboard.php` (0 byte), `welcome_message.php`, `export_periode.php`.
+5. **Inkonsistensi permission:** PDF → permission-based (Q-008); `/unauthorized` → Laravel 403 (Q-010 technical).
 
 ---
 
-> **Traceability:** setiap BR merujuk file+method sumber; setiap konflik merujuk dua sumber; setiap keputusan mengarah ke `docs/15`. Tidak ada rule tanpa asal.
-> **Prinsip:** Legacy Code → Audit → Cross-check → **Business Specification (dokumen ini)** → Human Decision (`docs/15`) → Laravel Architecture → Laravel Implementation. **Jangan melompati tahapan.**
+> **Traceability:** setiap BR merujuk file+method sumber; setiap konflik merujuk dua sumber; setiap keputusan mengarah ke `docs/15`/`docs/19`. Tidak ada rule tanpa asal.
+> **Prinsip:** Legacy Code → Audit → Cross-check → Production Verification → **Human Decision (`docs/19`)** → **Business Specification (dokumen ini)** → Architecture Design (`docs/20`) → Architecture Review → Implementation. **Jangan melompati tahapan.**
