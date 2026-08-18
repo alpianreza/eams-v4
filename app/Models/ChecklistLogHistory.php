@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChecklistLogHistory extends Model
 {
-    /** Append-only audit trail — no updated_at. */
-    public const UPDATED_AT = null;
+    /** Append-only audit trail — uses changed_at only; NO created_at/updated_at columns. */
+    public $timestamps = false;
 
     protected $fillable = [
         'checklist_log_id', 'changed_by_user_id', 'changed_by_name',
