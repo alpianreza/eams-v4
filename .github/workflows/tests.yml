@@ -10,40 +10,53 @@ permissions:
   contents: read
 
 jobs:
-  tests:
-    name: PHP 8.5 — Laravel 13
+  env:
+    name: diag 1 — php & composer version
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP 8.5
-        uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
           coverage: none
+      - run: php -v
+      - run: composer --version
 
-      - name: Validate composer.json
-        run: composer validate --no-check-lock
+  validate:
+    name: diag 2 — composer validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+      - run: composer validate --no-check-lock
 
-      - name: Install dependencies
-        run: composer update --prefer-dist --no-interaction --no-progress
+  resolve:
+    name: diag 3 — composer update (no scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
+          coverage: none
+      - run: composer update --no-scripts --no-interaction --no-progress --prefer-dist
 
-      - name: Prepare environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
-      - name: Boot check (about)
-        run: php artisan about
-
-      - name: Route list
-        run: php artisan route:list
-
-      - name: Migration status
-        run: php artisan migrate:status || true
-
-      - name: Run test suite
-        run: php artisan test
+  artisan:
+    name: diag 4 — artisan boot + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
+          coverage: none
+      - run: composer update --no-interaction --no-progress --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate
+      - run: php artisan about
+      - run: php artisan route:list
+      - run: php artisan test
