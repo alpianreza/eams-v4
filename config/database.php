@@ -39,9 +39,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => 'InnoDB',
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => [],
         ],
 
         // Production runs MariaDB 10.4.32 (production-verified). Same driver.
@@ -60,9 +58,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => 'InnoDB',
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => [],
         ],
 
         /*
@@ -81,10 +77,7 @@ return [
             'prefix' => '',
             'strict' => true,
             'engine' => 'InnoDB',
-            'options' => [
-                // Read-only intent: legacy DB is never modified (Migration Safety).
-                \PDO::ATTR_TIMEOUT => 5,
-            ],
+            'options' => [],
         ],
 
     ],

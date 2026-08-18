@@ -22,7 +22,7 @@
         <tbody>
         @forelse($holidays as $holiday)
             <tr>
-                <td>{{ $holiday->holiday_date->format('Y-m-d') }}</td>
+                <td>{{ $holiday->holiday_date }}</td>
                 <td>{{ $holiday->description }}</td>
                 @can('manage-master-data')
                 <td class="text-end">
