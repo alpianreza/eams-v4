@@ -13,11 +13,18 @@ use App\Http\Controllers\MasterData\EmployeeController;
 use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
 use App\Http\Controllers\Patrol\PatrolController;
+use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
+use App\Http\Controllers\Questionnaire\QuestionnaireController;
 use App\Http\Controllers\Report\ComplianceReportController;
 use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'));
+
+// Public questionnaire (guest, no login; write-whitelisted `kuesioner/*` in the write-guard).
+Route::get('kuesioner/{questionnaire}', [PublicQuestionnaireController::class, 'fill'])->name('kuesioner.fill');
+Route::post('kuesioner/{questionnaire}/kirim', [PublicQuestionnaireController::class, 'submit'])->name('kuesioner.submit');
+Route::get('kuesioner/{questionnaire}/selesai', [PublicQuestionnaireController::class, 'thanks'])->name('kuesioner.thanks');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -42,6 +49,12 @@ Route::middleware('auth')->group(function () {
     Route::get('utility/{type}', [UtilityLogController::class, 'index'])->name('utility.index');
     Route::post('utility/{type}', [UtilityLogController::class, 'store'])->name('utility.store');
     Route::delete('utility/{type}/{id}', [UtilityLogController::class, 'destroy'])->name('utility.destroy');
+
+    // Questionnaire admin (2K, Compliance).
+    Route::get('compliance/questionnaires', [QuestionnaireController::class, 'index'])->name('questionnaire.index');
+    Route::post('compliance/questionnaires', [QuestionnaireController::class, 'store'])->name('questionnaire.store');
+    Route::get('compliance/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show'])->name('questionnaire.show');
+    Route::post('compliance/questionnaires/{questionnaire}/questions', [QuestionnaireController::class, 'addQuestion'])->name('questionnaire.questions.store');
 
     // Checklist — STANDARD (2F) & GRID (2G).
     Route::get('compliance/checklist/{inventory}/fill', [ChecklistController::class, 'fill'])->name('compliance.checklist.fill');
