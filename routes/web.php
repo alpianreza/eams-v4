@@ -5,6 +5,7 @@ use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
+use App\Http\Controllers\Ems\EmsReportController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ItDevice\ItDeviceController;
@@ -22,7 +23,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'));
 
-// Public questionnaire (guest, no login; write-whitelisted `kuesioner/*`).
 Route::get('kuesioner/{questionnaire}', [PublicQuestionnaireController::class, 'fill'])->name('kuesioner.fill');
 Route::post('kuesioner/{questionnaire}/kirim', [PublicQuestionnaireController::class, 'submit'])->name('kuesioner.submit');
 Route::get('kuesioner/{questionnaire}/selesai', [PublicQuestionnaireController::class, 'thanks'])->name('kuesioner.thanks');
@@ -39,30 +39,30 @@ Route::middleware('auth')->group(function () {
 
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
 
-    // Compliance calendar (2K).
     Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');
     Route::delete('compliance/calendar/{event}', [CalendarController::class, 'destroy'])->name('calendar.destroy');
 
-    // Patrol (2K, Security).
+    // EMS / GHG report (2K, Compliance).
+    Route::get('ems/{category}', [EmsReportController::class, 'index'])->name('ems.index');
+    Route::post('ems/{category}/entry', [EmsReportController::class, 'saveEntry'])->name('ems.entry.save');
+    Route::post('ems/{category}/year', [EmsReportController::class, 'saveYear'])->name('ems.year.save');
+
     Route::get('patrol', [PatrolController::class, 'index'])->name('patrol.index');
     Route::post('patrol/sessions/start', [PatrolController::class, 'start'])->name('patrol.start');
     Route::get('patrol/sessions/{session}', [PatrolController::class, 'show'])->name('patrol.session');
     Route::post('patrol/sessions/{session}/scan', [PatrolController::class, 'scan'])->name('patrol.scan');
     Route::post('patrol/sessions/{session}/cancel', [PatrolController::class, 'cancel'])->name('patrol.cancel');
 
-    // Boiler & Utility daily logs (2K).
     Route::get('utility/{type}', [UtilityLogController::class, 'index'])->name('utility.index');
     Route::post('utility/{type}', [UtilityLogController::class, 'store'])->name('utility.store');
     Route::delete('utility/{type}/{id}', [UtilityLogController::class, 'destroy'])->name('utility.destroy');
 
-    // Questionnaire admin (2K, Compliance).
     Route::get('compliance/questionnaires', [QuestionnaireController::class, 'index'])->name('questionnaire.index');
     Route::post('compliance/questionnaires', [QuestionnaireController::class, 'store'])->name('questionnaire.store');
     Route::get('compliance/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show'])->name('questionnaire.show');
     Route::post('compliance/questionnaires/{questionnaire}/questions', [QuestionnaireController::class, 'addQuestion'])->name('questionnaire.questions.store');
 
-    // Checklist — STANDARD (2F) & GRID (2G).
     Route::get('compliance/checklist/{inventory}/fill', [ChecklistController::class, 'fill'])->name('compliance.checklist.fill');
     Route::post('compliance/checklist/{inventory}', [ChecklistController::class, 'store'])->name('compliance.checklist.store');
     Route::get('compliance/checklist-grid/{itemType}', [GridChecklistController::class, 'show'])->name('compliance.checklist.grid');
@@ -70,11 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::post('compliance/checklist-grid/{itemType}/mark-all', [GridChecklistController::class, 'markAll'])->name('compliance.checklist.grid.mark-all');
     Route::post('compliance/checklist-grid/{itemType}/clear', [GridChecklistController::class, 'clear'])->name('compliance.checklist.grid.clear');
 
-    // Compliance report PDF (2I) — GATE access-compliance-pdf (Q-008).
     Route::get('compliance/report/{inventory}/pdf', [ComplianceReportController::class, 'pdf'])
         ->name('compliance.report.pdf')->middleware('can:access-compliance-pdf');
 
-    // Compliance Inventory (2E).
     Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');
     Route::get('compliance/inventory/create', [ComplianceInventoryController::class, 'create'])->name('compliance.inventory.create');
     Route::get('compliance/inventory/detail/{inventory}', [ComplianceInventoryController::class, 'show'])->name('compliance.inventory.detail');
@@ -83,7 +81,6 @@ Route::middleware('auth')->group(function () {
     Route::put('compliance/inventory/{inventory}', [ComplianceInventoryController::class, 'update'])->name('compliance.inventory.update')->middleware('can:manage-inventory');
     Route::delete('compliance/inventory/{inventory}', [ComplianceInventoryController::class, 'destroy'])->name('compliance.inventory.destroy')->middleware('can:manage-inventory');
 
-    // Master data (2D).
     Route::prefix('master-data')->name('master-data.')->group(function () {
         Route::get('areas', [AreaController::class, 'index'])->name('areas.index');
         Route::get('categories', [InventoryCategoryController::class, 'index'])->name('categories.index');
