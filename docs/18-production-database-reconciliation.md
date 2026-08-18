@@ -80,7 +80,7 @@ Status: `CONFIRMED_ACTIVE` (dipakai kode aktif) / `CONFIRMED_LEGACY` (ada di DB,
 | 50 | users | Authentication | id | — | CONFIRMED_ACTIVE | AuthController, UserController, semua modul |
 | 51 | user_roles | Administration | id | — | CONFIRMED_ACTIVE | UserController (role custom) |
 
-**Ringkasan:** 51 tabel → **49 CONFIRMED_ACTIVE · 1 CONFIRMED_LEGACY (`checklist_schedules`) · 0 UNUSED · 1 framework (`migrations`)**.
+**Ringkasan:** 51 tabel → **49 CONFIRMED_ACTIVE · 1 CONFIRMED_LEGACY (`checklist_schedules`) · 0 UNUSED · 1 catatan khusus (`migrations` = framework)**. (Tabel #36 `migrations` dihitung active-framework.)
 
 **Tabel yang DIDUGA audit tetapi TIDAK ADA di production:** `compliance_checklist_master`, `compliance_checklist_log_items`, `compliance_checklist_logs`, `compliance_checklist_schedules`, `compliance_checklist_templates`, `it_device_logs` → keenamnya **bukan tabel produksi** (sisa kode/migration saja). Lihat Q-002/Q-014 di `docs/15`.
 
@@ -295,7 +295,7 @@ Format: Table / Difference / Audit Documentation / Production DB / Source Code /
 - **Difference:** kolom `frequency`
 - **Audit Documentation:** CONF-021 — "ditulis seeder, diabaikan query aktif"
 - **Production DB:** `frequency enum('daily','weekly','monthly') NOT NULL` (kolom ADA)
-- **Source Code:** query aktif hanya memfilter `item_type_id + active`
+- **Source Code:** query aktif hanya filter `item_type_id + active`
 - **Conclusion:** **legacy column** — terbukti ada, terbukti tak dipakai. CONF-021 tetap berlaku.
 - **Status:** LEGACY
 
@@ -352,7 +352,7 @@ Detail untuk tabel inti (sisanya diringkas dalam tabel di bawah).
 - **Columns written:** `name, username, email, password, photo, role, permission, page_access, status, wa_number` (+`created_at`).
 - **Columns read:** semua (login by username **atau** email; permission; page_access JSON).
 - **Expected but absent:** tidak ada.
-- **Present but unused:** tidak ada. `email` tidak UNIQUE → keunggulan email dijaga aplikasi.
+- **Present but unused:** tidak ada. `email` tidak UNIQUE → keunggalan email dijaga aplikasi.
 
 ### Table: checklist_master
 - **Used by:** ChecklistMasterController, seluruh kanal checklist, report print (pemetaan kolom dari teks).
@@ -608,7 +608,7 @@ Hal yang **tidak** dapat dibuktikan dari export structure-only (tetap terbuka):
 > **Hanya fakta yang perlu diperhatikan. BUKAN desain migration Laravel.**
 
 1. **Signedness tidak seragam:** `users.id int(11)` SIGNED, `compliance_inventory.id int(10) UNSIGNED`, `assets.id int(11)` SIGNED, `it_devices.id int(11)` SIGNED, `patrol_*.id UNSIGNED`, `notifications.id bigint(20) UNSIGNED`, kolom FK kadang beda signedness dari targetnya (`pics.inventory_id`, `it_device_commands.device_id`). Ini alasan beberapa FK tidak ada — normalisasi tipe id adalah prasyarat bila Laravel ingin FK penuh.
-2. **FK CASCADE berbahaya yang sekarang hidup:** hapus inventory → hapus seluruh histori checklist (FK #4); hapus item type → hapus master + logs + schedules (FK #2/#5/#6/#7); hapus kategori → hapus item types. Keputusan retain/ubah perilaku cascade = keputusan arsitektur nanti (dokumentasikan, jangan diasumsikan).
+2. **FK CASCADE berbahaya yang sekarang hidup:** hapus inventory → hapus seluruh histori checklist (FK #4); hapus item type → hapus master + logs + schedules (FK #2/#5/#6/#7); hapus kategori → hapus item types (FK #2 asset_item_types). Keputusan retain/ubah perilaku cascade = keputusan arsitektur nanti (dokumentasikan, jangan diasumsikan).
 3. **Application-level constraints yang harus diputuskan implementasinya:** dedup checklist (inventory+period+slot), email unik, holiday_date unik, 1 sesi patrol aktif, 1 command antrian — saat ini tanpa dukungan DB.
 4. **`period_key varchar(10)`** pas untuk `YYYY-MM-DD` dan `YYYY-MM-Wn` (10 char) — tidak ada ruang lebih; pertahankan panjang atau putuskan sadar.
 5. **ENUM vs free text:** 11 ENUM verified (§8) vs 10 kolom status free-text — pemetaan mana yang jadi enum resmi Laravel mengacu Q-017 & keputusan terkait.
@@ -620,5 +620,29 @@ Hal yang **tidak** dapat dibuktikan dari export structure-only (tetap terbuka):
 
 ---
 
-> **Prinsip fase ini:** Production database = evidence untuk schema. Source code = evidence untuk behavior. Keduanya direkonsiliasi di sini; tidak ada business rule yang diubah oleh dokumen ini.
-> Rantai: CI4 Source Code + Production Database Schema + Audit Documentation → **Schema Reconciliation (dokumen ini)** → Verified Legacy Specification (`docs/03`) → Human Decisions (`docs/15`) → Laravel Architecture → Laravel Implementation.
+## 13. Business Decisions Affecting Database (Fase 1)
+
+> Pembedaan tegas: **PRODUCTION FACT** (dari `eams_database.sql`) · **BUSINESS DECISION** (dari Project Owner, `docs/19`) · **LARAVEL DESIGN DECISION** (dari `docs/20`). Ketiganya **tidak dicampur**.
+
+| Topik | PRODUCTION FACT | BUSINESS DECISION | LARAVEL DESIGN DECISION |
+|---|---|---|---|
+| checked_by | `checklist_logs.checked_by varchar(100)` (string nama) | user relationship + snapshot (Q-006) | kolom `checked_by_user_id` (FK) + `checked_by_name` |
+| PIC | `compliance_inventory.pic varchar(100)` + `compliance_inventory_pics` (UNIQUE(inv,user), is_primary, tanpa FK) | pics = SOURCE OF TRUTH; maks 2; tanpa primary (Q-007) | relasi many-to-many maks 2, tanpa is_primary; `pic` hanya utk import |
+| allow_na | `asset_item_types.allow_na tinyint(1) DEFAULT 0` | NA valid bila allow_na; NA = hasil valid (Q-001) | validasi status terpusat; NA diterima semua kanal bila allow_na |
+| checklist_logs.status | `enum('ok','not_ok','na') NOT NULL DEFAULT 'ok'` | nilai sah ok/not_ok/na; ng→not_ok (Q-001) | enum resmi + normalisasi ng saat import |
+| checklist_logs.updated_at | TIDAK ADA (dead write — CONF-DB-015) | tambah `updated_at` + `checklist_log_histories` (Q-023) | timestamps aktif + observer → history table (LARAVEL IMPROVEMENT) |
+| asset_code | `uniq_asset_code` UNIQUE (CONF-DB-005) | asset_code dipertahankan PERSIS; jangan regenerate (Q-020) | import menjaga asset_code; konflik dilaporkan |
+| inventory status | `compliance_inventory.status varchar(50)` free text | GOOD / NEED_REPAIR / NOT_ACTIVE (Q-017) | enum resmi; mapping legacy Good/Need Repair/Not Active |
+| device online | `it_devices.status enum('online','offline')` + `last_seen` | ONLINE ≤ 10 menit (Q-012) | satu config `device_online_threshold_seconds` |
+| item type id | konstanta hard-coded (CCTV=13, dst.) | pakai `asset_item_types.code`, bukan id (Q-015) | lookup behavior by code |
+| file storage | file di `public/uploads/...` | storage configurable (Q-022) | Filesystem disks per kategori, path via config/env |
+| dead tables | famili `compliance_checklist_*` & `it_device_logs` TIDAK ADA | jangan dibawa (Q-014) | tidak ada migration untuknya |
+| FK legacy | 16 FK; beberapa relasi application-only (signedness) | schema baru clean (Q-002) | normalisasi id BIGINT UNSIGNED; FK selektif; hindari CASCADE destruktif pada histori |
+| PDF access | route `export/pdf/*` hanya `auth` | PDF utk admin + akses Compliance (Q-008) | Gate/Policy permission-based |
+
+> **Catatan CASCADE (koreksi desain sadar):** production fact = `checklist_logs.inventory_id → compliance_inventory.id ON DELETE CASCADE` (hapus inventory = hapus histori). Laravel design = **lindungi histori** (restrict/guard), bukan mewarisi CASCADE apa adanya.
+
+---
+
+> **Prinsip fase ini:** Production database = evidence untuk schema. Source code = evidence untuk behavior. Business decision (Project Owner) = penentu final. Keduanya direkonsiliasi di sini; keputusan arsitektur ada di `docs/20`.
+> Rantai: CI4 Source Code + Production Database Schema + Audit Documentation → **Schema Reconciliation (dokumen ini)** → Verified Legacy Specification (`docs/03`) → Human Decisions (`docs/15` & `docs/19`) → Laravel Architecture (`docs/20`) → Laravel Implementation.
