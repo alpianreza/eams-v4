@@ -6,6 +6,7 @@ use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
 use App\Http\Controllers\Ems\EmsReportController;
+use App\Http\Controllers\Fdm\FdmDataCollectionController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ItDevice\ItDeviceController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Patrol\PatrolController;
 use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
 use App\Http\Controllers\Questionnaire\QuestionnaireController;
 use App\Http\Controllers\Report\ComplianceReportController;
+use App\Http\Controllers\Thermal\ThermalImagingController;
 use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,10 +45,19 @@ Route::middleware('auth')->group(function () {
     Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');
     Route::delete('compliance/calendar/{event}', [CalendarController::class, 'destroy'])->name('calendar.destroy');
 
-    // EMS / GHG report (2K, Compliance).
     Route::get('ems/{category}', [EmsReportController::class, 'index'])->name('ems.index');
     Route::post('ems/{category}/entry', [EmsReportController::class, 'saveEntry'])->name('ems.entry.save');
     Route::post('ems/{category}/year', [EmsReportController::class, 'saveYear'])->name('ems.year.save');
+
+    // FDM Data Collection (2K).
+    Route::get('fdm-data-collection', [FdmDataCollectionController::class, 'index'])->name('fdm.index');
+    Route::post('fdm-data-collection/entry', [FdmDataCollectionController::class, 'saveEntry'])->name('fdm.entry.save');
+
+    // Thermal Imaging (2K).
+    Route::get('compliance/thermal-imaging', [ThermalImagingController::class, 'index'])->name('thermal.index');
+    Route::post('compliance/thermal-imaging', [ThermalImagingController::class, 'store'])->name('thermal.store');
+    Route::get('compliance/thermal-imaging/{report}', [ThermalImagingController::class, 'show'])->name('thermal.show');
+    Route::post('compliance/thermal-imaging/{report}/items', [ThermalImagingController::class, 'addItem'])->name('thermal.items.store');
 
     Route::get('patrol', [PatrolController::class, 'index'])->name('patrol.index');
     Route::post('patrol/sessions/start', [PatrolController::class, 'start'])->name('patrol.start');
