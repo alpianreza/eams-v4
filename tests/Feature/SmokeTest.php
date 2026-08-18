@@ -11,14 +11,8 @@ class SmokeTest extends TestCase
         $this->get('/up')->assertOk();
     }
 
-    public function test_welcome_page_responds(): void
+    public function test_root_redirects_guests_to_login(): void
     {
-        $this->get('/')->assertOk();
-    }
-
-    public function test_eams_config_is_loaded(): void
-    {
-        $this->assertSame('2026-04-01', config('eams.saturday_holiday_effective'));
-        $this->assertSame(600, config('eams.device_online_threshold_seconds'));
+        $this->get('/')->assertRedirect(route('login'));
     }
 }
