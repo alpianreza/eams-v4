@@ -8,45 +8,11 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  env:
-    name: diag 1 — php & composer version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
-          coverage: none
-      - run: php -v
-      - run: composer --version
-
-  validate:
-    name: diag 2 — composer validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-      - run: composer validate --no-check-lock
-
-  resolve:
-    name: diag 3 — composer update (no scripts)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
-          coverage: none
-      - run: composer update --no-scripts --no-interaction --no-progress --prefer-dist
-
   artisan:
-    name: diag 4 — artisan boot + test
+    name: build, boot & test (full output posted to PR)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +21,22 @@ jobs:
           php-version: '8.5'
           extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
           coverage: none
-      - run: composer update --no-interaction --no-progress --prefer-dist
-      - run: cp .env.example .env && php artisan key:generate
-      - run: php artisan about
-      - run: php artisan route:list
-      - run: php artisan test
+
+      - name: Build + boot + test (capture all output)
+        run: |
+          set +e
+          exec > ci-output.txt 2>&1
+          echo "=== php -v ==="; php -v; echo "exit=$?"
+          echo "=== composer update ==="; composer update --no-interaction --no-progress --prefer-dist; echo "exit=$?"
+          echo "=== cp .env + key:generate ==="; cp .env.example .env; php artisan key:generate; echo "exit=$?"
+          echo "=== about ==="; php artisan about; echo "exit=$?"
+          echo "=== route:list ==="; php artisan route:list; echo "exit=$?"
+          echo "=== test ==="; php artisan test; echo "exit=$?"
+          exit 0
+
+      - name: Post output to PR
+        if: always() && github.event_name == 'pull_request'
+        run: gh pr comment "$PR_NUMBER" --body-file ci-output.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
