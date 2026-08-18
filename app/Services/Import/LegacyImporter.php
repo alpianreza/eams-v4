@@ -15,13 +15,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Legacy CI4 → Laravel data import (2L). Reads from the READ-ONLY `legacy` connection
- * (never the runtime DB), writes to the clean Laravel DB. Repeatable + idempotent
- * (upsert by a stable business key), dry-run capable, collects an error report.
- *
- * - Missing legacy tables are SKIPPED (reported), never fatal.
- * - FK links use a legacy-id → new-id map built as master data imports.
- * - Model observers are suppressed (withoutEvents) so re-runs create no spurious history.
+ * Legacy CI4 → Laravel data import (2L). Reads the READ-ONLY `legacy` connection, writes
+ * the clean Laravel DB. Repeatable + idempotent (upsert by business key), dry-run capable,
+ * collects an error report. Missing legacy tables are SKIPPED (never fatal); FK links use a
+ * legacy-id → new-id map; model observers suppressed (withoutEvents) so re-runs are clean.
  */
 class LegacyImporter
 {
@@ -48,8 +45,6 @@ class LegacyImporter
         return $this->report;
     }
 
-    /* ---------- master data ---------- */
-
     protected function importUsers(): void
     {
         foreach ($this->rows('users', 'users') as $row) {
@@ -59,13 +54,15 @@ class LegacyImporter
                     [
                         'name' => $row->name ?? $row->username,
                         'email' => $row->email ?? null,
-                        'password' => $row->password ?? '',   // CARRY bcrypt hash (compatible)
-                        'role' => $this->mapRole($row->role ?? 'staff'),
+                        'role' => $this->mapRole((string) ($row->role ?? 'staff')),
                         'permission' => in_array($row->permission ?? 'read', ['read', 'write'], true) ? $row->permission : 'read',
                         'status' => ($row->status ?? 'active') === 'active' ? 'active' : 'inactive',
                     ]
                 ));
-                $this->mapId('users', $row->id, $user->id);
+                // CARRY the legacy bcrypt hash EXACTLY via raw query — bypass the 'hashed' cast
+                // (which would re-hash it and break the user's login).
+                DB::table('users')->where('id', $user->id)->update(['password' => (string) ($row->password ?? '')]);
+                $this->mapId('users', $row->id ?? 0, $user->id);
             });
         }
     }
@@ -75,7 +72,7 @@ class LegacyImporter
         foreach ($this->rows('areas', 'areas') as $row) {
             $this->write('areas', function () use ($row) {
                 $area = Area::withoutEvents(fn () => Area::updateOrCreate(['name' => (string) $row->name], ['active' => (bool) ($row->active ?? true)]));
-                $this->mapId('areas', $row->id, $area->id);
+                $this->mapId('areas', $row->id ?? 0, $area->id);
             });
         }
     }
@@ -88,7 +85,7 @@ class LegacyImporter
                     ['name' => (string) $row->name],
                     ['code' => $row->code ?? strtoupper(substr((string) $row->name, 0, 3)), 'active' => (bool) ($row->active ?? true)]
                 ));
-                $this->mapId('inventory_categories', $row->id, $cat->id);
+                $this->mapId('inventory_categories', $row->id ?? 0, $cat->id);
             });
         }
     }
@@ -108,7 +105,7 @@ class LegacyImporter
                         'active' => (bool) ($row->active ?? true),
                     ]
                 ));
-                $this->mapId('asset_item_types', $row->id, $itemType->id);
+                $this->mapId('asset_item_types', $row->id ?? 0, $itemType->id);
             });
         }
     }
@@ -137,8 +134,6 @@ class LegacyImporter
         }
     }
 
-    /* ---------- compliance ---------- */
-
     protected function importInventories(): void
     {
         foreach ($this->rows('compliance_inventories', 'compliance_inventory') as $row) {
@@ -160,16 +155,16 @@ class LegacyImporter
                         'area_id' => $areaId,
                         'type_description' => $row->type_description ?? null,
                         'specific_area' => $row->specific_area ?? null,
-                        'status' => $this->mapStatus($row->status ?? ''),
+                        'status' => $this->mapStatus((string) ($row->status ?? '')),
                         'qty' => (int) ($row->qty ?? 1),
                         'remark' => $row->remark ?? null,
-                        'expired_date' => $row->expired_date ? substr((string) $row->expired_date, 0, 10) : null,
+                        'expired_date' => ($row->expired_date ?? null) ? substr((string) $row->expired_date, 0, 10) : null,
                         'photo' => $row->photo ?? null,
                         'qr_image' => $row->qr_image ?? null,
                         'active' => (bool) ($row->active ?? true),
                     ]
                 ));
-                $this->mapId('compliance_inventories', $row->id, $inv->id);
+                $this->mapId('compliance_inventories', $row->id ?? 0, $inv->id);
             });
         }
     }
@@ -205,7 +200,7 @@ class LegacyImporter
             $this->write('checklist_master', function () use ($row) {
                 $itemTypeId = $this->mapped('asset_item_types', $row->item_type_id ?? 0);
                 if (! $itemTypeId) {
-                    throw new \RuntimeException("question '{$row->question}': item_type tidak ter-resolve");
+                    throw new \RuntimeException("question: item_type tidak ter-resolve");
                 }
                 $q = ChecklistMaster::withoutEvents(fn () => ChecklistMaster::updateOrCreate(
                     ['asset_item_type_id' => $itemTypeId, 'question' => (string) $row->question],
@@ -215,7 +210,7 @@ class LegacyImporter
                         'active' => (bool) ($row->active ?? true),
                     ]
                 ));
-                $this->mapId('checklist_master', $row->id, $q->id);
+                $this->mapId('checklist_master', $row->id ?? 0, $q->id);
             });
         }
     }
@@ -236,10 +231,10 @@ class LegacyImporter
                 $checker = $checkerName !== '' ? User::where('name', $checkerName)->first() : null;
 
                 ChecklistLog::withoutEvents(fn () => ChecklistLog::updateOrCreate(
-                    ['inventory_id' => $invId, 'checklist_master_id' => $questionId, 'period_key' => (string) $row->period_key, 'time_slot' => $row->time_slot ?? null],
+                    ['inventory_id' => $invId, 'checklist_master_id' => $questionId, 'period_key' => (string) ($row->period_key ?? ''), 'time_slot' => $row->time_slot ?? null],
                     [
                         'asset_item_type_id' => $inventory->asset_item_type_id,
-                        'check_date' => $row->check_date ? substr((string) $row->check_date, 0, 10) : substr((string) $row->period_key, 0, 10),
+                        'check_date' => ($row->check_date ?? null) ? substr((string) $row->check_date, 0, 10) : substr((string) ($row->period_key ?? ''), 0, 10),
                         'status' => in_array($row->status ?? '', ['ok', 'not_ok', 'na'], true) ? $row->status : 'ok',
                         'remark' => $row->remark ?? null,
                         'photo' => $row->photo ?? null,
@@ -251,8 +246,6 @@ class LegacyImporter
             });
         }
     }
-
-    /* ---------- mapping helpers ---------- */
 
     protected function mapRole(string $role): string
     {
@@ -269,9 +262,6 @@ class LegacyImporter
         };
     }
 
-    /* ---------- infra ---------- */
-
-    /** Legacy rows of a table (READ-ONLY). Missing table → empty + SKIPPED report (never fatal). */
     protected function rows(string $reportKey, string $legacyTable): iterable
     {
         if (! Schema::connection('legacy')->hasTable($legacyTable)) {
@@ -283,7 +273,6 @@ class LegacyImporter
         return DB::connection('legacy')->table($legacyTable)->orderBy('id')->cursor();
     }
 
-    /** Apply $fn for one row; track read/written/errors in the report. */
     protected function write(string $reportKey, callable $fn): void
     {
         $this->report[$reportKey] ??= ['read' => 0, 'written' => 0, 'errors' => []];

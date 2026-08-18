@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\ChecklistLog;
 use App\Models\ComplianceInventory;
 use App\Models\User;
+use App\Services\Import\LegacyImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -14,7 +15,6 @@ class LegacyImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Point the READ-ONLY `legacy` connection at its own in-memory SQLite and build legacy-shaped tables. */
     protected function setUpLegacy(array $tables): void
     {
         config()->set('database.connections.legacy', [
@@ -31,22 +31,33 @@ class LegacyImportTest extends TestCase
         return DB::connection('legacy');
     }
 
+    /** Run the importer directly and fail loudly with the real per-table errors. */
+    protected function runImport(bool $dryRun = false): array
+    {
+        $report = (new LegacyImporter(dryRun: $dryRun))->run();
+        $errors = collect($report)->flatMap(fn ($r, $k) => array_map(fn ($e) => "$k: $e", $r['errors']))->values()->all();
+        $this->assertSame([], $errors); // surfaces the real import error(s) on failure
+
+        return $report;
+    }
+
     public function test_import_users_carries_and_maps_idempotently(): void
     {
         $this->setUpLegacy([
             'CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, name TEXT, email TEXT, password TEXT, role TEXT, permission TEXT, status TEXT)',
         ]);
         $this->legacy()->table('users')->insert([
-            'id' => 1, 'username' => 'asep', 'name' => 'Asep', 'email' => 'asep@x.id', 'password' => 'bcrypt-hash', 'role' => 'Compliance', 'permission' => 'write', 'status' => 'active',
+            'id' => 1, 'username' => 'asep', 'name' => 'Asep', 'email' => 'asep@x.id', 'password' => '$2y$10$legacybcrypthash', 'role' => 'Compliance', 'permission' => 'write', 'status' => 'active',
         ]);
 
-        $this->artisan('eams:import')->assertSuccessful();
-        $this->artisan('eams:import')->assertSuccessful(); // re-run → idempotent
+        $this->runImport();
+        $this->runImport(); // re-run → idempotent
 
         $this->assertSame(1, User::where('username', 'asep')->count());
         $user = User::where('username', 'asep')->first();
-        $this->assertSame('compliance', $user->role);       // TRANSFORM → canonical
-        $this->assertSame('bcrypt-hash', $user->password);   // CARRY
+        $this->assertSame('compliance', $user->role);
+        // CARRY: legacy hash preserved exactly (NOT re-hashed by the 'hashed' cast).
+        $this->assertSame('$2y$10$legacybcrypthash', $user->password);
     }
 
     public function test_import_inventory_preserves_asset_code_and_maps_status(): void
@@ -63,7 +74,7 @@ class LegacyImportTest extends TestCase
             'asset_code' => 'APAR-001', 'status' => 'Need Repair', 'specific_area' => 'Lt. 1', 'qty' => 2, 'active' => 1,
         ]);
 
-        $this->artisan('eams:import')->assertSuccessful();
+        $this->runImport();
 
         $inv = ComplianceInventory::where('asset_code', 'APAR-001')->firstOrFail();  // Q-020: exact
         $this->assertSame('need_repair', $inv->status);   // Q-017 transform
@@ -78,17 +89,16 @@ class LegacyImportTest extends TestCase
         ]);
         $this->legacy()->table('areas')->insert(['id' => 1, 'name' => 'Gedung A', 'active' => 1]);
 
-        $this->artisan('eams:import', ['--dry-run' => true])->assertSuccessful();
+        $this->runImport(dryRun: true);
 
-        $this->assertSame(0, Area::count());   // dry-run: nothing written
+        $this->assertSame(0, Area::count());
     }
 
     public function test_missing_legacy_tables_are_skipped_not_fatal(): void
     {
-        $this->setUpLegacy([]); // no legacy tables at all
-
-        // every table is missing → all skipped (not errors) → command succeeds
-        $this->artisan('eams:import')->assertSuccessful();
+        $this->setUpLegacy([]);
+        $report = $this->runImport();  // should run with no errors; tables skipped
+        $this->assertTrue($report['users']['skipped'] ?? false);
     }
 
     public function test_checklist_log_maps_checked_by_to_user_and_snapshot(): void
@@ -108,7 +118,7 @@ class LegacyImportTest extends TestCase
         $this->legacy()->table('checklist_master')->insert(['id' => 7, 'item_type_id' => 1, 'question' => 'Tekanan?', 'frequency' => 'daily', 'require_photo' => 0, 'active' => 1]);
         $this->legacy()->table('checklist_logs')->insert(['inventory_id' => 5, 'checklist_master_id' => 7, 'period_key' => '2026-08-18', 'status' => 'ok', 'checked_by' => 'Budi', 'mode' => 'standard']);
 
-        $this->artisan('eams:import')->assertSuccessful();
+        $this->runImport();
 
         $log = ChecklistLog::firstOrFail();
         $this->assertSame('Budi', $log->checked_by_name);   // Q-006 snapshot
