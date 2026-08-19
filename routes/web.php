@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\LoginSessionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\Checklist\ChecklistController;
@@ -60,16 +63,25 @@ Route::middleware('auth')->group(function () {
     Route::put('compliance/evidence/{log}/followup', [EvidenceController::class, 'updateFollowup'])->name('evidence.followup');
     Route::get('compliance/ranking', [RankingController::class, 'index'])->name('ranking.index');
 
-    // IT Device monitoring (2J).
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
 
-    // IT Assets (§8): assignment lifecycle (BR-31/32).
+    // IT Assets (§8).
     Route::get('it-assets', [ITAssetController::class, 'index'])->name('it-assets.index');
     Route::post('it-assets', [ITAssetController::class, 'store'])->name('it-assets.store');
     Route::get('it-assets/{asset}', [ITAssetController::class, 'detail'])->name('it-assets.detail');
     Route::put('it-assets/{asset}', [ITAssetController::class, 'update'])->name('it-assets.update');
     Route::post('it-assets/{asset}/assign', [ITAssetController::class, 'assign'])->name('it-assets.assign');
     Route::post('it-assets/{asset}/return', [ITAssetController::class, 'returnAsset'])->name('it-assets.return');
+
+    // Admin system tools (§19 butir 15): audit logs, login sessions, backups — admin-only.
+    Route::middleware('can:manage-system')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('login-sessions', [LoginSessionController::class, 'index'])->name('login-sessions.index');
+        Route::post('login-sessions/{session}/end', [LoginSessionController::class, 'end'])->name('login-sessions.end');
+        Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
+        Route::post('backups/prune', [BackupController::class, 'prune'])->name('backups.prune');
+    });
 
     Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');

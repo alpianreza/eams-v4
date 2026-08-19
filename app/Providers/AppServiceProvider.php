@@ -19,9 +19,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('write', fn (User $user): bool => $user->hasWriteAccess());
         Gate::define('access-page', fn (User $user, string $page): bool => $user->canAccessPage($page));
         Gate::define('manage-master-data', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance'));
-        // Compliance inventory managed by admin/compliance (write permission enforced globally by the write-guard).
         Gate::define('manage-inventory', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance'));
         // Q-008: Compliance PDF is for admin + users with Compliance access only.
         Gate::define('access-compliance-pdf', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance') || $user->canAccessPage('compliance'));
+        // Admin-only system tools (audit logs, login sessions, backups).
+        Gate::define('manage-system', fn (User $user): bool => $user->isAdmin());
     }
 }
