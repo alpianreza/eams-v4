@@ -1,0 +1,100 @@
+name: eams
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eams-app
+    container_name: eams-app
+    restart: unless-stopped
+    environment:
+      APP_SETUP: "true"          # container ini yang migrasi + key:generate
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-eams}
+      DB_USERNAME: ${DB_USERNAME:-eams}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      QUEUE_CONNECTION: database
+      SESSION_LIFETIME: "480"     # 8 jam (menit)
+      # Kredensial & EAMS_* sebaiknya via file .env (lihat docs/24-docker.md)
+    volumes:
+      - appcode:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: eams-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - appcode:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: mariadb:10.4
+    container_name: eams-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-eams}
+      MYSQL_USER: ${DB_USERNAME:-eams}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  queue:
+    image: eams-app
+    container_name: eams-queue
+    restart: unless-stopped
+    command: php artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-eams}
+      DB_USERNAME: ${DB_USERNAME:-eams}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      QUEUE_CONNECTION: database
+    volumes:
+      - appcode:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    image: eams-app
+    container_name: eams-scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-eams}
+      DB_USERNAME: ${DB_USERNAME:-eams}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      QUEUE_CONNECTION: database
+    volumes:
+      - appcode:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  appcode:
+  dbdata:

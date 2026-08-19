@@ -1,0 +1,11 @@
+.git
+.gitignore
+.github
+node_modules
+vendor
+.env
+.env.*
+!.env.example
+storage/logs/*.log
+tests
+docs
