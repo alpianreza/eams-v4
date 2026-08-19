@@ -5,6 +5,7 @@ use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
+use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Ems\EmsReportController;
 use App\Http\Controllers\Evidence\EvidenceController;
 use App\Http\Controllers\Fdm\FdmDataCollectionController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\MasterData\HolidayController;
 use App\Http\Controllers\MasterData\InventoryCategoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Patrol\PatrolController;
+use App\Http\Controllers\Progress\ProgressController;
 use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
 use App\Http\Controllers\Questionnaire\QuestionnaireController;
 use App\Http\Controllers\Ranking\RankingController;
@@ -43,16 +45,16 @@ Route::middleware('auth')->group(function () {
     Route::get('home', HomeController::class)->name('home');
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
-    // Self-service (Q-021): read-only users MAY change their own password — whitelisted.
     Route::get('settings/password', [SelfServiceController::class, 'editPassword'])->name('self.password.edit');
     Route::post('settings/password', [SelfServiceController::class, 'updatePassword'])->name('self.password.update');
 
-    // Notifications (2K).
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
-    // Evidence & Follow-up + Ranking (monitoring layer).
+    // Monitoring layer (§7): dashboard KPI + progress + evidence + ranking (late = time-based, Q-019).
+    Route::get('compliance/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('compliance/progress', [ProgressController::class, 'index'])->name('progress.index');
     Route::get('compliance/evidence', [EvidenceController::class, 'index'])->name('evidence.index');
     Route::put('compliance/evidence/{log}/followup', [EvidenceController::class, 'updateFollowup'])->name('evidence.followup');
     Route::get('compliance/ranking', [RankingController::class, 'index'])->name('ranking.index');
