@@ -29,8 +29,8 @@ class MenuTest extends TestCase
 
     public function test_non_admin_without_page_access_sees_fewer_items(): void
     {
-        // staff with no page_access (empty JSON) — should NOT see admin-only items
-        $staff = User::factory()->create(['role' => 'staff', 'permission' => 'read', 'page_access' => json_encode(['home'])]);
+        // staff with a limited page_access (array — the model array-casts it) — should NOT see admin-only items
+        $staff = User::factory()->create(['role' => 'staff', 'permission' => 'read', 'page_access' => ['home']]);
 
         $response = $this->actingAs($staff)->get(route('home'))->assertOk();
         $response->assertDontSee('Audit Logs'); // admin-only hidden (BR-44)
