@@ -20,6 +20,7 @@ use App\Http\Controllers\Patrol\PatrolController;
 use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
 use App\Http\Controllers\Questionnaire\QuestionnaireController;
 use App\Http\Controllers\Report\ComplianceReportController;
+use App\Http\Controllers\SelfServiceController;
 use App\Http\Controllers\Thermal\ThermalImagingController;
 use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('home', HomeController::class)->name('home');
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
+
+    // Self-service (Q-021): read-only users MAY change their own password — whitelisted in the write-guard.
+    Route::get('settings/password', [SelfServiceController::class, 'editPassword'])->name('self.password.edit');
+    Route::post('settings/password', [SelfServiceController::class, 'updatePassword'])->name('self.password.update');
 
     // Notifications (2K).
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
