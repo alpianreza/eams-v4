@@ -1,26 +1,31 @@
 name: eams
 
+x-app-build: &app-build
+  context: .
+  dockerfile: Dockerfile
+
+x-app-env: &app-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${APP_URL:-http://localhost:8080}
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_DATABASE: ${DB_DATABASE:-eams}
+  DB_USERNAME: ${DB_USERNAME:-eams}
+  DB_PASSWORD: ${DB_PASSWORD:-secret}
+  QUEUE_CONNECTION: database
+  SESSION_LIFETIME: "480"     # 8 jam (menit)
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: *app-build
     image: eams-app
     container_name: eams-app
     restart: unless-stopped
     environment:
+      <<: *app-env
       APP_SETUP: "true"          # container ini yang migrasi + key:generate
-      APP_ENV: production
-      APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-http://localhost:8080}
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: "3306"
-      DB_DATABASE: ${DB_DATABASE:-eams}
-      DB_USERNAME: ${DB_USERNAME:-eams}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
-      QUEUE_CONNECTION: database
-      SESSION_LIFETIME: "480"     # 8 jam (menit)
       # Kredensial & EAMS_* sebaiknya via file .env (lihat docs/24-docker.md)
     volumes:
       - appcode:/var/www/html
@@ -60,18 +65,12 @@ services:
       retries: 24
 
   queue:
+    build: *app-build
     image: eams-app
     container_name: eams-queue
     restart: unless-stopped
     command: php artisan queue:work database --sleep=3 --tries=3 --max-time=3600
-    environment:
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: "3306"
-      DB_DATABASE: ${DB_DATABASE:-eams}
-      DB_USERNAME: ${DB_USERNAME:-eams}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
-      QUEUE_CONNECTION: database
+    environment: *app-env
     volumes:
       - appcode:/var/www/html
     depends_on:
@@ -79,18 +78,12 @@ services:
         condition: service_healthy
 
   scheduler:
+    build: *app-build
     image: eams-app
     container_name: eams-scheduler
     restart: unless-stopped
     command: php artisan schedule:work
-    environment:
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: "3306"
-      DB_DATABASE: ${DB_DATABASE:-eams}
-      DB_USERNAME: ${DB_USERNAME:-eams}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
-      QUEUE_CONNECTION: database
+    environment: *app-env
     volumes:
       - appcode:/var/www/html
     depends_on:
