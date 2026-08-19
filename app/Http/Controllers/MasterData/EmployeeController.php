@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\ItAsset\AssetAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,24 +19,25 @@ class EmployeeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validateData($request);
-
-        Employee::create($data);
+        Employee::create($this->validateData($request));
 
         return back()->with('status', 'Karyawan ditambahkan.');
     }
 
     public function update(Request $request, Employee $employee): RedirectResponse
     {
-        $data = $this->validateData($request, $employee->id);
-
-        $employee->update($data);
+        $employee->update($this->validateData($request, $employee->id));
 
         return back()->with('status', 'Karyawan diperbarui.');
     }
 
     public function destroy(Employee $employee): RedirectResponse
     {
+        // BR-32: an employee with an ACTIVE asset assignment cannot be deleted.
+        if (AssetAssignment::where('employee_id', $employee->id)->whereNull('returned_at')->exists()) {
+            return back()->withErrors(['employee' => 'Karyawan masih memiliki assignment asset aktif; kembalikan dulu atau ubah status jadi nonaktif.']);
+        }
+
         $employee->delete();
 
         return back()->with('status', 'Karyawan dihapus.');
