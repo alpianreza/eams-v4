@@ -6,6 +6,9 @@
 
 return [
 
+    // Branding.
+    'company_name' => env('EAMS_COMPANY_NAME', 'PT YHS EAMS'),
+
     // Saturday holiday effective date (Q-005). NOT retroactive.
     'saturday_holiday_effective' => env('EAMS_SATURDAY_HOLIDAY_EFFECTIVE', '2026-04-01'),
 
