@@ -6,6 +6,7 @@ use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
 use App\Http\Controllers\Ems\EmsReportController;
+use App\Http\Controllers\Evidence\EvidenceController;
 use App\Http\Controllers\Fdm\FdmDataCollectionController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\HomeController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Patrol\PatrolController;
 use App\Http\Controllers\Questionnaire\PublicQuestionnaireController;
 use App\Http\Controllers\Questionnaire\QuestionnaireController;
+use App\Http\Controllers\Ranking\RankingController;
 use App\Http\Controllers\Report\ComplianceReportController;
 use App\Http\Controllers\SelfServiceController;
 use App\Http\Controllers\Thermal\ThermalImagingController;
@@ -41,7 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::get('home', HomeController::class)->name('home');
     Route::get('files/{category}/{path}', [FileController::class, 'show'])->where('path', '.*')->name('files.show');
 
-    // Self-service (Q-021): read-only users MAY change their own password — whitelisted in the write-guard.
+    // Self-service (Q-021): read-only users MAY change their own password — whitelisted.
     Route::get('settings/password', [SelfServiceController::class, 'editPassword'])->name('self.password.edit');
     Route::post('settings/password', [SelfServiceController::class, 'updatePassword'])->name('self.password.update');
 
@@ -49,6 +51,11 @@ Route::middleware('auth')->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    // Evidence & Follow-up + Ranking (monitoring layer).
+    Route::get('compliance/evidence', [EvidenceController::class, 'index'])->name('evidence.index');
+    Route::put('compliance/evidence/{log}/followup', [EvidenceController::class, 'updateFollowup'])->name('evidence.followup');
+    Route::get('compliance/ranking', [RankingController::class, 'index'])->name('ranking.index');
 
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
 
