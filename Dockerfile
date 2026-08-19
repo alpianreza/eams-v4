@@ -13,13 +13,11 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 # ---------- Stage 2: PHP-FPM runtime ----------
 FROM php:8.5-fpm AS app
 
-# System deps + PHP extensions (pdo_mysql, gd utk dompdf/qr, intl, zip, opcache, pcntl utk queue)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
-        libzip-dev libicu-dev libonig-dev libxml2-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring xml gd zip bcmath intl opcache pcntl \
-    && rm -rf /var/lib/apt/lists/*
+# Ekstensi PHP via installer standar (mengurus system deps + configure per versi PHP
+# secara otomatis, dan compile dengan aman). Lebih stabil daripada apt + docker-php-ext-install
+# paralel yang rawan OOM/race di Docker Desktop.
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions pdo_mysql mbstring xml gd zip bcmath intl opcache pcntl
 
 WORKDIR /var/www/html
 COPY --from=vendor /app /var/www/html
