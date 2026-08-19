@@ -11,6 +11,7 @@ use App\Http\Controllers\Evidence\EvidenceController;
 use App\Http\Controllers\Fdm\FdmDataCollectionController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ItAsset\ITAssetController;
 use App\Http\Controllers\ItDevice\ItDeviceController;
 use App\Http\Controllers\MasterData\AreaController;
 use App\Http\Controllers\MasterData\AssetItemTypeController;
@@ -52,14 +53,23 @@ Route::middleware('auth')->group(function () {
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
-    // Monitoring layer (§7): dashboard KPI + progress + evidence + ranking (late = time-based, Q-019).
+    // Monitoring layer (§7).
     Route::get('compliance/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('compliance/progress', [ProgressController::class, 'index'])->name('progress.index');
     Route::get('compliance/evidence', [EvidenceController::class, 'index'])->name('evidence.index');
     Route::put('compliance/evidence/{log}/followup', [EvidenceController::class, 'updateFollowup'])->name('evidence.followup');
     Route::get('compliance/ranking', [RankingController::class, 'index'])->name('ranking.index');
 
+    // IT Device monitoring (2J).
     Route::get('it/devices', [ItDeviceController::class, 'index'])->name('it.devices.index');
+
+    // IT Assets (§8): assignment lifecycle (BR-31/32).
+    Route::get('it-assets', [ITAssetController::class, 'index'])->name('it-assets.index');
+    Route::post('it-assets', [ITAssetController::class, 'store'])->name('it-assets.store');
+    Route::get('it-assets/{asset}', [ITAssetController::class, 'detail'])->name('it-assets.detail');
+    Route::put('it-assets/{asset}', [ITAssetController::class, 'update'])->name('it-assets.update');
+    Route::post('it-assets/{asset}/assign', [ITAssetController::class, 'assign'])->name('it-assets.assign');
+    Route::post('it-assets/{asset}/return', [ITAssetController::class, 'returnAsset'])->name('it-assets.return');
 
     Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');

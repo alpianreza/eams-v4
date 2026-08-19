@@ -5,6 +5,7 @@ namespace Tests\Feature\Backup;
 use App\Models\Backup;
 use App\Services\BackupManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -29,12 +30,14 @@ class BackupTest extends TestCase
         config()->set('eams.backup_retention_days', 30);
 
         app(BackupManager::class)->create('database');
-        Backup::first()->update(['created_at' => now()->subDays(40)]); // older than 30-day retention
+        $old = Backup::first();
+        // created_at is not mass-assignable — set it via the query builder to age the backup.
+        DB::table('backups')->where('id', $old->id)->update(['created_at' => now()->subDays(40)]);
         app(BackupManager::class)->create('database'); // a fresh one
 
         $removed = app(BackupManager::class)->prune();
 
-        $this->assertSame(1, $removed);       // the old one pruned
+        $this->assertSame(1, $removed);        // the old one pruned
         $this->assertSame(1, Backup::count()); // the fresh one kept
     }
 }
