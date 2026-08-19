@@ -1,10 +1,14 @@
 # ---------- Stage 1: Composer dependencies ----------
 FROM composer:2 AS vendor
+ENV COMPOSER_ALLOW_SUPERUSER=1
 WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
+# composer.lock tidak selalu ter-commit di repo -> copy composer.json saja,
+# lalu install (bila lock ada) ATAU update (generate lock saat build).
+COPY composer.json ./
+RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader \
+    || composer update --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
 COPY . .
-RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --optimize-autoloader
+RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 # ---------- Stage 2: PHP-FPM runtime ----------
 FROM php:8.5-fpm AS app
