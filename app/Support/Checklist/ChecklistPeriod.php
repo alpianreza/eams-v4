@@ -112,7 +112,14 @@ class ChecklistPeriod
         return self::STATUS_OPEN;
     }
 
-    /** Whether a daily entry may be made for this date (BR-08 blocks offdays; BR-04 blocks future). */
+    /**
+     * Whether a period may be edited.
+     *
+     * BR-04 / Q-011 (decided 2026-08-19, keep legacy asymmetry):
+     * - daily: editable unless future or an offday.
+     * - weekly: editable while not future AND within a 3-month backfill grace window.
+     * - monthly: always editable (unlimited backfill).
+     */
     public static function isEditable(string $frequency, Carbon $date, ?Carbon $now = null): bool
     {
         $now = ($now ?? Carbon::now())->copy();
@@ -123,7 +130,17 @@ class ChecklistPeriod
 
         [$start] = self::bounds($frequency, $date);
 
-        return $now->gte($start);
+        // Future periods are never editable (BR-04).
+        if ($now->lt($start)) {
+            return false;
+        }
+
+        // Q-011: weekly backfill limited to a 3-month grace window; monthly is unlimited.
+        if ($frequency === self::FREQ_WEEKLY) {
+            return $now->lte($start->copy()->addMonths(3));
+        }
+
+        return true; // daily (non-offday, non-future) + monthly
     }
 
     /** [start, end] (Carbon pair) of the period containing $date. */

@@ -23,7 +23,9 @@ return [
     'storage_categories' => ['inventory', 'checklist', 'qr', 'attachments'],
 
     // Public paths a read-only user may still POST to (BR-42 whitelist).
-    'write_whitelist' => ['login', 'logout', 'kuesioner', 'kuesioner/*', 'api/agent/*'],
+    // Q-021: self-service (settings/*) is whitelisted — read-only users MAY change their
+    // own password/contact; they remain blocked from all other mutations.
+    'write_whitelist' => ['login', 'logout', 'kuesioner', 'kuesioner/*', 'api/agent/*', 'settings', 'settings/*'],
 
     // Centralized upload validation (Q-026).
     'upload' => [
