@@ -23,12 +23,10 @@
 </head>
 <body>
     @auth
+    @php($unreadNotifications = \App\Models\Notification::where('user_id', auth()->id())->unread()->count())
     <nav class="sidebar">
         <div class="brand"><i class="bi bi-shield-check"></i> {{ config('eams.company_name', 'EAMS') }}</div>
-        @foreach(
-            
-            
-            App\Support\Menu::for(auth()->user()) as $group)
+        @foreach(\App\Support\Menu::for(auth()->user()) as $group)
             <div class="group">{{ $group['group'] }}</div>
             @foreach($group['items'] as $item)
                 @php($url = route($item['route'], $item['params'] ?? []))
@@ -41,7 +39,12 @@
         <div class="topbar">
             <div class="fw-semibold text-muted">@yield('title', 'Beranda')</div>
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('notifications.index') }}" class="text-muted position-relative text-decoration-none"><i class="bi bi-bell"></i></a>
+                <a href="{{ route('notifications.index') }}" class="text-muted position-relative text-decoration-none">
+                    <i class="bi bi-bell"></i>
+                    @if($unreadNotifications > 0)
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">{{ $unreadNotifications }}</span>
+                    @endif
+                </a>
                 <div class="dropdown">
                     <a class="text-decoration-none text-dark dropdown-toggle" data-bs-toggle="dropdown" href="#">{{ auth()->user()->name }}</a>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -54,6 +57,8 @@
             </div>
         </div>
         <div class="content">
+            @if(session('status'))<div class="alert alert-success alert-dismissible fade show">{{ session('status') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>@endif
+            @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
             @yield('content')
         </div>
     </div>

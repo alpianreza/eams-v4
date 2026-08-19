@@ -3,17 +3,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Masuk — {{ config('app.name', 'EAMS') }}</title>
+    <title>Masuk — {{ config('eams.company_name', 'EAMS') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 </head>
-<body class="bg-light d-flex align-items-center" style="min-height:100vh">
+<body class="d-flex align-items-center" style="min-height:100vh;background:linear-gradient(135deg,#1e2a38,#0d6efd)">
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-5 col-lg-4">
-            <div class="card shadow-sm">
+            <div class="card shadow border-0">
                 <div class="card-body p-4">
-                    <h1 class="h4 mb-1">{{ config('app.name', 'EAMS') }}</h1>
-                    <p class="text-muted small mb-4">Masuk dengan username atau email Anda.</p>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-shield-check fs-3 text-primary"></i>
+                        <h1 class="h4 mb-0">{{ config('eams.company_name', 'EAMS') }}</h1>
+                    </div>
+                    <p class="text-muted small mb-4">Environmental & Asset Management System. Masuk dengan username atau email Anda.</p>
 
                     @if ($errors->any())
                         <div class="alert alert-danger py-2">{{ $errors->first() }}</div>
@@ -37,6 +41,7 @@
                     </form>
                 </div>
             </div>
+            <p class="text-center text-white-50 small mt-3">&copy; {{ date('Y') }} PT YHS</p>
         </div>
     </div>
 </div>
