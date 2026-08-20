@@ -20,8 +20,10 @@ use Illuminate\Support\Facades\Schema;
  * collects an error report. Missing legacy tables are SKIPPED (never fatal); FK links use a
  * legacy-id → new-id map; model observers suppressed (withoutEvents) so re-runs are clean.
  *
- * Column mapping follows the REAL legacy schema (verified from the CI4 repo):
- * checklist_logs.checklist_template_id → checklist_master.id (the legacy live join).
+ * Column mapping verified against the REAL legacy dump (eams_database.sql):
+ *  - checklist_logs.checklist_template_id → checklist_master.id (legacy live join).
+ *  - asset_item_types.inventory_category_id → inventory_categories.id.
+ *  - users.page_access (JSON text) / wa_number / photo carried.
  */
 class LegacyImporter
 {
@@ -55,19 +57,21 @@ class LegacyImporter
                 $username = (string) $row->username;
 
                 // Query-builder upsert (NOT the model) so the legacy bcrypt password hash is
-                // carried EXACTLY (the model's 'hashed' cast would re-hash and break logins),
-                // and the NOT NULL users.password column is satisfied on insert.
+                // carried EXACTLY (the model's 'hashed' cast would re-hash and break logins).
                 DB::table('users')->upsert([
                     'username' => $username,
                     'name' => $row->name ?? $username,
                     'email' => $row->email ?? null,
                     'password' => (string) ($row->password ?? ''),
+                    'photo' => $row->photo ?? null,
                     'role' => $this->mapRole((string) ($row->role ?? 'staff')),
                     'permission' => in_array($row->permission ?? 'read', ['read', 'write'], true) ? $row->permission : 'read',
+                    'page_access' => $this->toJsonOrNull($row->page_access ?? null),
                     'status' => ($row->status ?? 'active') === 'active' ? 'active' : 'inactive',
+                    'wa_number' => $row->wa_number ?? null,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ], ['username'], ['name', 'email', 'password', 'role', 'permission', 'status', 'updated_at']);
+                ], ['username'], ['name', 'email', 'password', 'photo', 'role', 'permission', 'page_access', 'status', 'wa_number', 'updated_at']);
 
                 $userId = DB::table('users')->where('username', $username)->value('id');
                 $this->mapId('users', $row->id ?? 0, $userId);
@@ -102,7 +106,8 @@ class LegacyImporter
     {
         foreach ($this->rows('asset_item_types', 'asset_item_types') as $row) {
             $this->write('asset_item_types', function () use ($row) {
-                $categoryId = $this->mapped('inventory_categories', $row->category_id ?? 0) ?? InventoryCategory::value('id');
+                // FIX: legacy FK column is `inventory_category_id` (bukan category_id).
+                $categoryId = $this->mapped('inventory_categories', $row->inventory_category_id ?? $row->category_id ?? 0) ?? InventoryCategory::value('id');
                 $itemType = AssetItemType::withoutEvents(fn () => AssetItemType::updateOrCreate(
                     ['code' => (string) $row->code],
                     [
@@ -150,7 +155,6 @@ class LegacyImporter
                 $itemTypeId = $this->mapped('asset_item_types', $row->item_type_id ?? 0);
                 $areaId = $this->mapped('areas', $row->area_id ?? 0);
 
-                // category/item_type are required — skip + REVIEW if unresolvable (no master imported).
                 if (! $categoryId || ! $itemTypeId) {
                     throw new \RuntimeException("asset_code {$row->asset_code}: kategori/item-type tidak ter-resolve");
                 }
@@ -228,7 +232,7 @@ class LegacyImporter
         foreach ($this->rows('checklist_logs', 'checklist_logs') as $row) {
             $this->write('checklist_logs', function () use ($row) {
                 $invId = $this->mapped('compliance_inventories', $row->inventory_id ?? 0);
-                // FIX: legacy FK column is `checklist_template_id` (bukan checklist_master_id) → references checklist_master.id.
+                // FIX: legacy FK column is `checklist_template_id` → references checklist_master.id.
                 $questionId = $this->mapped('checklist_master', $row->checklist_template_id ?? 0);
                 if (! $invId || ! $questionId) {
                     throw new \RuntimeException("log#{$row->id}: inventory/question tidak ter-resolve (inv_id={$row->inventory_id}, template_id={$row->checklist_template_id})");
@@ -239,7 +243,7 @@ class LegacyImporter
                 $checkerName = trim((string) ($row->checked_by ?? ''));
                 $checker = $checkerName !== '' ? User::where('name', $checkerName)->first() : null;
 
-                // check_date: nilai legacy, kalau tidak valid → derive dari period_key (weekly -Wn / monthly Y-m → -01).
+                // check_date: nilai legacy, kalau tidak valid → derive dari period_key.
                 $checkDate = $this->toDate($row->check_date ?? null) ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
                 if (! $checkDate) {
                     throw new \RuntimeException("log#{$row->id}: check_date tidak valid (period_key={$row->period_key})");
@@ -321,6 +325,17 @@ class LegacyImporter
             return $pk.'-01';                   // monthly / weekly-stripped Y-m → -01
         }
         return null;
+    }
+
+    /** page_access legacy (text JSON) → string JSON valid untuk kolom json; invalid/kosong → null. */
+    protected function toJsonOrNull($value): ?string
+    {
+        $v = trim((string) ($value ?? ''));
+        if ($v === '') {
+            return null;
+        }
+        json_decode($v);
+        return json_last_error() === JSON_ERROR_NONE ? $v : null;
     }
 
     protected function rows(string $reportKey, string $legacyTable): iterable
