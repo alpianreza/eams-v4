@@ -101,7 +101,8 @@ class LegacyImportTest extends TestCase
         $this->assertTrue($report['users']['skipped'] ?? false);
     }
 
-    public function test_checklist_log_maps_checked_by_to_user_and_snapshot(): void
+    /** Skema legacy ASLI: checklist_logs memakai kolom checklist_template_id (bukan checklist_master_id). */
+    protected function seedChecklistFixtures(): void
     {
         $this->setUpLegacy([
             'CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, name TEXT, role TEXT, permission TEXT, status TEXT)',
@@ -109,14 +110,21 @@ class LegacyImportTest extends TestCase
             'CREATE TABLE asset_item_types (id INTEGER PRIMARY KEY, category_id INTEGER, code TEXT, name TEXT, checklist_frequency TEXT, allow_na INTEGER, active INTEGER)',
             'CREATE TABLE compliance_inventory (id INTEGER PRIMARY KEY, category_id INTEGER, item_type_id INTEGER, asset_code TEXT, status TEXT, active INTEGER)',
             'CREATE TABLE checklist_master (id INTEGER PRIMARY KEY, item_type_id INTEGER, question TEXT, frequency TEXT, require_photo INTEGER, active INTEGER)',
-            'CREATE TABLE checklist_logs (id INTEGER PRIMARY KEY, inventory_id INTEGER, checklist_master_id INTEGER, period_key TEXT, time_slot TEXT, status TEXT, remark TEXT, photo TEXT, checked_by TEXT, mode TEXT)',
+            // Kolom legacy asli: checklist_template_id, check_date, follow_up_status/note/date.
+            'CREATE TABLE checklist_logs (id INTEGER PRIMARY KEY, inventory_id INTEGER, item_type_id INTEGER, checklist_template_id INTEGER, check_date TEXT, period_key TEXT, time_slot TEXT, status TEXT, remark TEXT, photo TEXT, checked_by TEXT, created_at TEXT, follow_up_status TEXT, follow_up_note TEXT, follow_up_date TEXT)',
         ]);
         $this->legacy()->table('users')->insert(['id' => 1, 'username' => 'budi', 'name' => 'Budi', 'role' => 'compliance', 'permission' => 'write', 'status' => 'active']);
         $this->legacy()->table('inventory_categories')->insert(['id' => 1, 'name' => 'FS', 'code' => 'FS', 'active' => 1]);
         $this->legacy()->table('asset_item_types')->insert(['id' => 1, 'category_id' => 1, 'code' => 'APAR', 'name' => 'APAR', 'checklist_frequency' => 'daily', 'allow_na' => 0, 'active' => 1]);
         $this->legacy()->table('compliance_inventory')->insert(['id' => 5, 'category_id' => 1, 'item_type_id' => 1, 'asset_code' => 'APAR-001', 'status' => 'Good', 'active' => 1]);
         $this->legacy()->table('checklist_master')->insert(['id' => 7, 'item_type_id' => 1, 'question' => 'Tekanan?', 'frequency' => 'daily', 'require_photo' => 0, 'active' => 1]);
-        $this->legacy()->table('checklist_logs')->insert(['inventory_id' => 5, 'checklist_master_id' => 7, 'period_key' => '2026-08-18', 'status' => 'ok', 'checked_by' => 'Budi', 'mode' => 'standard']);
+    }
+
+    public function test_checklist_log_maps_checked_by_to_user_and_snapshot(): void
+    {
+        $this->seedChecklistFixtures();
+        // legacy pakai checklist_template_id=7 (→ checklist_master.id 7); status kosong '' → ok; follow_up 'open' ikut terbawa.
+        $this->legacy()->table('checklist_logs')->insert(['inventory_id' => 5, 'item_type_id' => 1, 'checklist_template_id' => 7, 'check_date' => '2026-08-18', 'period_key' => '2026-08-18', 'status' => '', 'checked_by' => 'Budi', 'created_at' => '2026-08-18 08:00:00', 'follow_up_status' => 'open']);
 
         $this->runImport();
 
@@ -124,5 +132,21 @@ class LegacyImportTest extends TestCase
         $this->assertSame('Budi', $log->checked_by_name);   // Q-006 snapshot
         $this->assertNotNull($log->checked_by_user_id);    // resolved to the user
         $this->assertSame('2026-08-18', $log->period_key);
+        $this->assertSame('ok', $log->status);             // '' → ok
+        $this->assertSame('2026-08-18', $log->check_date->format('Y-m-d'));
+        $this->assertSame('open', $log->follow_up_status); // follow_up preserved
+    }
+
+    public function test_checklist_log_normalizes_status_and_derives_date(): void
+    {
+        $this->seedChecklistFixtures();
+        // 'ng' → not_ok (BR-11); weekly period_key 'YYYY-MM-Wn' → derive check_date ke tanggal 1 bulan itu.
+        $this->legacy()->table('checklist_logs')->insert(['inventory_id' => 5, 'item_type_id' => 1, 'checklist_template_id' => 7, 'check_date' => '0000-00-00', 'period_key' => '2026-08-W2', 'status' => 'ng', 'checked_by' => 'Budi', 'created_at' => '2026-08-10 08:00:00']);
+
+        $this->runImport();
+
+        $log = ChecklistLog::firstOrFail();
+        $this->assertSame('not_ok', $log->status);                  // ng → not_ok
+        $this->assertSame('2026-08-01', $log->check_date->format('Y-m-d')); // weekly -W2 → 2026-08-01 (zero-date diganti)
     }
 }

@@ -11,7 +11,8 @@ COPY . .
 RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 # ---------- Stage 2: PHP-FPM runtime ----------
-FROM php:8.5-fpm AS app
+# PHP 8.2 (match server produksi & XAMPP).
+FROM php:8.2-fpm AS app
 
 # Ekstensi PHP via installer standar (auto system deps + configure per versi PHP,
 # stabil — menggantikan apt+docker-php-ext-install paralel yang rawan OOM di Docker Desktop).
@@ -24,7 +25,6 @@ COPY docker/php/local.ini /usr/local/etc/php/conf.d/zz-eams.ini
 COPY docker/entrypoint.sh /usr/local/bin/eams-entrypoint
 
 # Normalisasi line ending CRLF (Windows) -> LF agar shebang #!/bin/sh valid, lalu chmod +x.
-# Tanpa ini, script yang ter-checkout CRLF memicu 'no such file or directory' di Linux.
 RUN sed -i 's/\r$//' /usr/local/bin/eams-entrypoint \
     && chmod +x /usr/local/bin/eams-entrypoint \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \

@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Schema;
  * the clean Laravel DB. Repeatable + idempotent (upsert by business key), dry-run capable,
  * collects an error report. Missing legacy tables are SKIPPED (never fatal); FK links use a
  * legacy-id → new-id map; model observers suppressed (withoutEvents) so re-runs are clean.
+ *
+ * Column mapping follows the REAL legacy schema (verified from the CI4 repo):
+ * checklist_logs.checklist_template_id → checklist_master.id (the legacy live join).
  */
 class LegacyImporter
 {
@@ -163,7 +166,7 @@ class LegacyImporter
                         'status' => $this->mapStatus((string) ($row->status ?? '')),
                         'qty' => (int) ($row->qty ?? 1),
                         'remark' => $row->remark ?? null,
-                        'expired_date' => ($row->expired_date ?? null) ? substr((string) $row->expired_date, 0, 10) : null,
+                        'expired_date' => $this->toDate($row->expired_date ?? null),
                         'photo' => $row->photo ?? null,
                         'qr_image' => $row->qr_image ?? null,
                         'active' => (bool) ($row->active ?? true),
@@ -225,9 +228,10 @@ class LegacyImporter
         foreach ($this->rows('checklist_logs', 'checklist_logs') as $row) {
             $this->write('checklist_logs', function () use ($row) {
                 $invId = $this->mapped('compliance_inventories', $row->inventory_id ?? 0);
-                $questionId = $this->mapped('checklist_master', $row->checklist_master_id ?? 0);
+                // FIX: legacy FK column is `checklist_template_id` (bukan checklist_master_id) → references checklist_master.id.
+                $questionId = $this->mapped('checklist_master', $row->checklist_template_id ?? 0);
                 if (! $invId || ! $questionId) {
-                    throw new \RuntimeException('checklist_log: inventory/question tidak ter-resolve');
+                    throw new \RuntimeException("log#{$row->id}: inventory/question tidak ter-resolve (inv_id={$row->inventory_id}, template_id={$row->checklist_template_id})");
                 }
                 $inventory = ComplianceInventory::find($invId);
 
@@ -235,17 +239,26 @@ class LegacyImporter
                 $checkerName = trim((string) ($row->checked_by ?? ''));
                 $checker = $checkerName !== '' ? User::where('name', $checkerName)->first() : null;
 
+                // check_date: nilai legacy, kalau tidak valid → derive dari period_key (weekly -Wn / monthly Y-m → -01).
+                $checkDate = $this->toDate($row->check_date ?? null) ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
+                if (! $checkDate) {
+                    throw new \RuntimeException("log#{$row->id}: check_date tidak valid (period_key={$row->period_key})");
+                }
+
                 ChecklistLog::withoutEvents(fn () => ChecklistLog::updateOrCreate(
                     ['inventory_id' => $invId, 'checklist_master_id' => $questionId, 'period_key' => (string) ($row->period_key ?? ''), 'time_slot' => $row->time_slot ?? null],
                     [
                         'asset_item_type_id' => $inventory->asset_item_type_id,
-                        'check_date' => ($row->check_date ?? null) ? substr((string) $row->check_date, 0, 10) : substr((string) ($row->period_key ?? ''), 0, 10),
-                        'status' => in_array($row->status ?? '', ['ok', 'not_ok', 'na'], true) ? $row->status : 'ok',
+                        'check_date' => $checkDate,
+                        'status' => $this->mapChecklistStatus($row->status ?? null),
                         'remark' => $row->remark ?? null,
                         'photo' => $row->photo ?? null,
                         'checked_by_user_id' => $checker?->id,
                         'checked_by_name' => $checkerName !== '' ? $checkerName : ($checker?->name ?? '—'),
                         'mode' => in_array($row->mode ?? '', ['standard', 'grid'], true) ? $row->mode : 'standard',
+                        'follow_up_status' => $this->mapFollowUpStatus($row->follow_up_status ?? null),
+                        'follow_up_note' => $row->follow_up_note ?? null,
+                        'follow_up_date' => $this->toDate($row->follow_up_date ?? null),
                     ]
                 ));
             });
@@ -265,6 +278,49 @@ class LegacyImporter
             'not active', 'not_active', 'inactive' => 'not_active',
             default => 'good',
         };
+    }
+
+    /** BR-11/Q-001: normalisasi status checklist legacy → ok|not_ok|na. 'ng' → not_ok; ''/tak dikenal → ok. */
+    protected function mapChecklistStatus($status): string
+    {
+        $s = strtolower(trim((string) ($status ?? '')));
+        return match ($s) {
+            'not_ok', 'not ok', 'not-ok', 'ng' => 'not_ok',
+            'na', 'n/a' => 'na',
+            default => 'ok',
+        };
+    }
+
+    protected function mapFollowUpStatus($status): ?string
+    {
+        $s = strtolower(trim((string) ($status ?? '')));
+        return in_array($s, ['open', 'monitoring', 'closed'], true) ? $s : null;
+    }
+
+    /** Terima Y-m-d / Y-m-d H:i:s; tolak zero-date ('0000-00-00')/invalid → null. */
+    protected function toDate($value): ?string
+    {
+        $v = trim((string) ($value ?? ''));
+        if ($v === '' || str_starts_with($v, '0000')) {
+            return null;
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return "{$m[1]}-{$m[2]}-{$m[3]}";
+        }
+        return null;
+    }
+
+    /** period_key → tanggal valid: daily Y-m-d apa adanya; monthly Y-m → -01; weekly Y-m-Wn → -01 (seperti legacy). */
+    protected function periodKeyToDate(string $periodKey): ?string
+    {
+        $pk = preg_replace('/-W[1-4]$/', '', trim($periodKey)); // buang suffix -Wn
+        if ($d = $this->toDate($pk)) {
+            return $d;                          // daily Y-m-d
+        }
+        if (preg_match('/^\d{4}-\d{2}$/', $pk)) {
+            return $pk.'-01';                   // monthly / weekly-stripped Y-m → -01
+        }
+        return null;
     }
 
     protected function rows(string $reportKey, string $legacyTable): iterable
