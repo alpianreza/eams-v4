@@ -1,0 +1,5 @@
+* text=auto
+
+# Shell script harus selalu LF (jangan CRLF) supaya bisa dieksekusi di container Linux.
+*.sh text eol=lf
+docker/**/*.sh text eol=lf
