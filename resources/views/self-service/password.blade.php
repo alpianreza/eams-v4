@@ -3,8 +3,14 @@
 @section('title', 'Ganti Password')
 
 @section('content')
-<h1 class="h4 mb-3">Ganti Password</h1>
-<p class="text-muted small">Self-service — berlaku juga untuk akun read-only.</p>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Akun"
+    eyebrow-icon="bi-key"
+    title="Ganti Password"
+    lead="Self-service — berlaku juga untuk akun read-only."
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
 

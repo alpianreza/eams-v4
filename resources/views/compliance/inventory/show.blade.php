@@ -3,10 +3,17 @@
 @section('title', 'Detail — ' . $inventory->asset_code)
 
 @section('content')
+<x-page-header
+    variant="card"
+    tone="inventory-detail"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-box-seam"
+    :title="$inventory->asset_code"
+    :lead="($inventory->itemType->name ?? '—') . ' · ' . ($inventory->category->name ?? '—')"
+/>
+
 <div class="card">
     <div class="card-body">
-        <h1 class="h4 mb-1"><code>{{ $inventory->asset_code }}</code></h1>
-        <p class="text-muted">{{ $inventory->itemType->name ?? '—' }} · {{ $inventory->category->name ?? '—' }}</p>
         <dl class="row mb-0">
             <dt class="col-sm-3">Area</dt><dd class="col-sm-9">{{ $inventory->area->name ?? '—' }}@if($inventory->specific_area) / {{ $inventory->specific_area }}@endif</dd>
             <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ str_replace('_',' ',$inventory->status) }}</dd>

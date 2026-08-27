@@ -3,12 +3,19 @@
 @section('title', 'Compliance Inventory')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Compliance Inventory</h1>
-    @can('manage-inventory')
-    <a href="{{ route('compliance.inventory.create') }}" class="btn btn-primary btn-sm">+ Tambah</a>
-    @endcan
-</div>
+<x-page-header
+    variant="card"
+    tone="inventory"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-box-seam"
+    title="Compliance Inventory"
+>
+    <x-slot:actions>
+        @can('manage-inventory')
+        <a href="{{ route('compliance.inventory.create') }}" class="btn btn-primary btn-sm">+ Tambah</a>
+        @endcan
+    </x-slot:actions>
+</x-page-header>
 
 <form method="GET" class="row g-2 mb-3">
     <div class="col-auto"><input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Cari kode..."></div>

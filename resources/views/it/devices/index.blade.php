@@ -3,8 +3,14 @@
 @section('title', 'IT Device Monitoring')
 
 @section('content')
-<h1 class="h4 mb-3">IT Device Monitoring</h1>
-<p class="text-muted small">Online bila heartbeat ≤ {{ config('eams.device_online_threshold_seconds') }} detik ({{ intdiv(config('eams.device_online_threshold_seconds'),60) }} menit) terakhir.</p>
+<x-page-header
+    variant="card"
+    tone="it"
+    eyebrow="IT"
+    eyebrow-icon="bi-pc-display"
+    title="IT Device Monitoring"
+    :lead="'Online bila heartbeat ≤ ' . config('eams.device_online_threshold_seconds') . ' detik (' . intdiv(config('eams.device_online_threshold_seconds'), 60) . ' menit) terakhir.'"
+/>
 
 <div class="card"><div class="card-body p-0">
     <table class="table table-striped mb-0">

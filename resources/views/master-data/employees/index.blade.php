@@ -3,7 +3,13 @@
 @section('title', 'Karyawan — Master Data')
 
 @section('content')
-<h1 class="h4 mb-3">Karyawan</h1>
+<x-page-header
+    variant="card"
+    tone="utility"
+    eyebrow="Master Data"
+    eyebrow-icon="bi-people"
+    title="Karyawan"
+/>
 
 @can('manage-master-data')
 <div class="card mb-4"><div class="card-body">

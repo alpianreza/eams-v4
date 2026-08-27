@@ -3,10 +3,17 @@
 @section('title', 'Kalender Compliance')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Kalender Compliance</h1>
-    <form method="GET" class="d-flex gap-2"><input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm"><button class="btn btn-sm btn-outline-secondary">Tampilkan</button></form>
-</div>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-calendar3"
+    title="Kalender Compliance"
+>
+    <x-slot:actions>
+        <form method="GET" class="d-flex gap-2"><input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm"><button class="btn btn-sm btn-outline-secondary">Tampilkan</button></form>
+    </x-slot:actions>
+</x-page-header>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 @can('write')

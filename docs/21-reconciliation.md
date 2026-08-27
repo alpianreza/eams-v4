@@ -1,7 +1,7 @@
 # PHASE 2M — Reconciliation: CI4 → Laravel Parity Report
 
 Rebuild EAMS (Laravel 13 + PHP 8.5, `eams-v4`) diverifikasi terhadap business rules &
-keputusan HUMAN-APPROVED (docs/19 decision log). Status CI terkini: **129 passed · 294 assertions · exit 0**.
+keputusan HUMAN-APPROVED (docs/19 decision log). Status CI terkini: **163 passed · 406 assertions · exit 0**.
 
 ## A. Checklist engine (inti)
 
@@ -81,3 +81,20 @@ Utility (Boiler/IPAL/PDAM daily log + total bulanan, `UtilityLogTest`), Patrol (
 - `compliance_checklist_*` (dead) TIDAK dibawa (Q-009) — checklist pakai `checklist_master` + `checklist_logs`.
 - Username unik; email opsional. Kolom `date` disimpan string `Y-m-d` murni (portabel SQLite/MySQL/MariaDB).
 - Deferred (technical-scope, terdokumentasi): channel agent update win7/xp, remote lock, normalisasi hardware mendalam; `it_devices.asset_id` FK; CO₂ EMS dari faktor emisi (perlu faktor); export Excel/PDF per modul; layout editor patrol (visual); analytics/PDF kuesioner.
+
+---
+
+## G. Fase 1 modules — gap closure (2026-08-27)
+
+Menutup gap modul yang hilang di rebuild Laravel vs CI4. Detail lengkap: `docs/25-phase3-modules.md`.
+
+| Modul | Gate | Route prefix | Controller | Status |
+|---|---|---|---|---|
+| Users Management | `manage-users` (admin) | `/users` | `Admin\UserController` | ✅ + test |
+| Checklist Master | `manage-master-data` (tulis) | `compliance/checklist-master` | `Compliance\ChecklistMasterController` | ✅ |
+| Settings | `manage-settings` (admin/compliance) | `settings` | `SettingsController` | ✅ + migration `app_settings` |
+| Print Center | `access-print-center` (admin/compliance/auditor) | `compliance/print` | `Compliance\PrintController` | ✅ |
+
+- **Design system (Fase 0):** `public/assets/css/{tokens,app,page-header}.css` + komponen `<x-page-header>` + dark mode.
+- **Data legacy:** `php artisan eams:import` (koneksi read-only `legacy` → DB `eams`). Hasil: 107.210 checklist logs, 627 inventory, 40 user, 0 error. `importChecklistLogs` dioptimasi streaming (bulk insert chunk 1000) — memperbaiki OOM + mempercepat dari ~1,5 jam ke hitungan detik.
+- **Test:** 163 passed (406 assertions).

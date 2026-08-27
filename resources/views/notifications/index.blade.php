@@ -3,10 +3,17 @@
 @section('title', 'Notifikasi')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Notifikasi</h1>
-    <form method="POST" action="{{ route('notifications.read-all') }}">@csrf<button class="btn btn-sm btn-outline-secondary">Tandai semua dibaca</button></form>
-</div>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Utama"
+    eyebrow-icon="bi-bell"
+    title="Notifikasi"
+>
+    <x-slot:actions>
+        <form method="POST" action="{{ route('notifications.read-all') }}">@csrf<button class="btn btn-sm btn-outline-secondary">Tandai semua dibaca</button></form>
+    </x-slot:actions>
+</x-page-header>
 
 <div class="card"><div class="card-body p-0">
     @forelse($notifications as $n)

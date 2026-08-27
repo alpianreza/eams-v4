@@ -229,44 +229,93 @@ class LegacyImporter
 
     protected function importChecklistLogs(): void
     {
-        foreach ($this->rows('checklist_logs', 'checklist_logs') as $row) {
-            $this->write('checklist_logs', function () use ($row) {
-                $invId = $this->mapped('compliance_inventories', $row->inventory_id ?? 0);
-                // FIX: legacy FK column is `checklist_template_id` → references checklist_master.id.
-                $questionId = $this->mapped('checklist_master', $row->checklist_template_id ?? 0);
-                if (! $invId || ! $questionId) {
-                    throw new \RuntimeException("log#{$row->id}: inventory/question tidak ter-resolve (inv_id={$row->inventory_id}, template_id={$row->checklist_template_id})");
-                }
-                $inventory = ComplianceInventory::find($invId);
+        $legacy = DB::connection('legacy');
+        if (! Schema::connection('legacy')->hasTable('checklist_logs')) {
+            $this->report['checklist_logs'] = ['read' => 0, 'written' => 0, 'errors' => [], 'skipped' => true];
 
-                // Q-006: checked_by (string name) → checked_by_user_id + checked_by_name snapshot.
-                $checkerName = trim((string) ($row->checked_by ?? ''));
-                $checker = $checkerName !== '' ? User::where('name', $checkerName)->first() : null;
-
-                // check_date: nilai legacy, kalau tidak valid → derive dari period_key.
-                $checkDate = $this->toDate($row->check_date ?? null) ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
-                if (! $checkDate) {
-                    throw new \RuntimeException("log#{$row->id}: check_date tidak valid (period_key={$row->period_key})");
-                }
-
-                ChecklistLog::withoutEvents(fn () => ChecklistLog::updateOrCreate(
-                    ['inventory_id' => $invId, 'checklist_master_id' => $questionId, 'period_key' => (string) ($row->period_key ?? ''), 'time_slot' => $row->time_slot ?? null],
-                    [
-                        'asset_item_type_id' => $inventory->asset_item_type_id,
-                        'check_date' => $checkDate,
-                        'status' => $this->mapChecklistStatus($row->status ?? null),
-                        'remark' => $row->remark ?? null,
-                        'photo' => $row->photo ?? null,
-                        'checked_by_user_id' => $checker?->id,
-                        'checked_by_name' => $checkerName !== '' ? $checkerName : ($checker?->name ?? '—'),
-                        'mode' => in_array($row->mode ?? '', ['standard', 'grid'], true) ? $row->mode : 'standard',
-                        'follow_up_status' => $this->mapFollowUpStatus($row->follow_up_status ?? null),
-                        'follow_up_note' => $row->follow_up_note ?? null,
-                        'follow_up_date' => $this->toDate($row->follow_up_date ?? null),
-                    ]
-                ));
-            });
+            return;
         }
+
+        // Preload lookup maps (1 query each) — jangan query per baris untuk ~100k log.
+        $usersByName = User::pluck('id', 'name')->all();
+        $inventoryTypeById = ComplianceInventory::pluck('asset_item_type_id', 'id')->all();
+
+        $rows = [];
+        $read = 0;
+        $written = 0;
+        $errors = [];
+        $cleared = false;
+
+        foreach ($legacy->table('checklist_logs')->orderBy('id')->cursor() as $row) {
+            $read++;
+
+            $invId = $this->mapped('compliance_inventories', $row->inventory_id ?? 0);
+            // FIX: legacy FK column is `checklist_template_id` → references checklist_master.id.
+            $questionId = $this->mapped('checklist_master', $row->checklist_template_id ?? 0);
+            if (! $invId || ! $questionId) {
+                $errors[] = "log#{$row->id}: inventory/question tidak ter-resolve (inv_id={$row->inventory_id}, template_id={$row->checklist_template_id})";
+                continue;
+            }
+
+            // Q-006: checked_by (string name) → checked_by_user_id + checked_by_name snapshot.
+            $checkerName = trim((string) ($row->checked_by ?? ''));
+            $checkerId = $checkerName !== '' ? ($usersByName[$checkerName] ?? null) : null;
+
+            // check_date: nilai legacy, kalau tidak valid → derive dari period_key.
+            $checkDate = $this->toDate($row->check_date ?? null) ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
+            if (! $checkDate) {
+                $errors[] = "log#{$row->id}: check_date tidak valid (period_key={$row->period_key})";
+                continue;
+            }
+
+            $rows[] = [
+                'inventory_id' => $invId,
+                'asset_item_type_id' => $inventoryTypeById[$invId] ?? null,
+                'checklist_master_id' => $questionId,
+                'check_date' => $checkDate,
+                'period_key' => (string) ($row->period_key ?? ''),
+                'time_slot' => $row->time_slot ?? null,
+                'status' => $this->mapChecklistStatus($row->status ?? null),
+                'remark' => $row->remark ?? null,
+                'photo' => $row->photo ?? null,
+                'checked_by_user_id' => $checkerId,
+                'checked_by_name' => $checkerName !== '' ? $checkerName : '-',
+                'mode' => in_array($row->mode ?? '', ['standard', 'grid'], true) ? $row->mode : 'standard',
+                'follow_up_status' => $this->mapFollowUpStatus($row->follow_up_status ?? null),
+                'follow_up_note' => $row->follow_up_note ?? null,
+                'follow_up_date' => $this->toDate($row->follow_up_date ?? null),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $written++;
+
+            if (count($rows) >= 1000) {
+                $this->flushChecklistLogs($rows, $cleared);
+                $rows = [];
+            }
+        }
+
+        if ($rows !== []) {
+            $this->flushChecklistLogs($rows, $cleared);
+        }
+
+        $this->report['checklist_logs'] = ['read' => $read, 'written' => $written, 'errors' => $errors];
+    }
+
+    protected function flushChecklistLogs(array &$rows, bool &$cleared): void
+    {
+        if ($this->dryRun || $rows === []) {
+            return;
+        }
+
+        if (! $cleared) {
+            // Full-replace untuk tabel turunan ini: hapus sekali, lalu bulk insert per chunk.
+            // Idempoten secara efek (hasil akhir sama tiap run).
+            DB::table('checklist_logs')->delete();
+            $cleared = true;
+        }
+
+        DB::table('checklist_logs')->insert($rows);
     }
 
     protected function mapRole(string $role): string

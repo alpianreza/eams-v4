@@ -3,8 +3,14 @@
 @section('title', 'Grid Checklist — ' . $itemType->name)
 
 @section('content')
-<h1 class="h4 mb-1">Grid Checklist — {{ $itemType->name }} <code>{{ $itemType->code }}</code></h1>
-<p class="text-muted">Fast/mass entry · Periode: <strong>{{ $periodKey }}</strong> · Grid boleh tanpa foto/keterangan untuk NOT_OK.</p>
+<x-page-header
+    variant="card"
+    tone="checklist"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-grid-3x3"
+    :title="'Grid Checklist — ' . $itemType->name . ' ' . $itemType->code"
+    :lead-html="'Fast/mass entry · Periode: <strong>' . $periodKey . '</strong> · Grid boleh tanpa foto/keterangan untuk NOT_OK.'"
+/>
 
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif

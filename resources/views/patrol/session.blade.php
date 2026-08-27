@@ -3,8 +3,14 @@
 @section('title', 'Sesi Patrol')
 
 @section('content')
-<h1 class="h4 mb-1">Sesi Patrol — {{ $session->route->name ?? '' }}</h1>
-<p class="text-muted">{{ $session->patrol_date }} · {{ $session->checked_count }}/{{ $session->total_checkpoints }} checkpoint · status {{ $session->status }}</p>
+<x-page-header
+    variant="card"
+    tone="patrol"
+    eyebrow="Security"
+    eyebrow-icon="bi-shield-check"
+    :title="'Sesi Patrol — ' . ($session->route->name ?? '')"
+    :lead="$session->patrol_date . ' · ' . $session->checked_count . '/' . $session->total_checkpoints . ' checkpoint · status ' . $session->status"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
 

@@ -3,8 +3,14 @@
 @section('title', 'Thermal Report ' . $report->inspection_date)
 
 @section('content')
-<h1 class="h4 mb-1">Thermal Report — {{ $report->inspection_date }}</h1>
-<p class="text-muted small">{{ $report->inspector_name ?? '—' }} · {{ $report->facility ?? '—' }}@if($report->area_name) / {{ $report->area_name }}@endif</p>
+<x-page-header
+    variant="card"
+    tone="compliance"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-thermometer-half"
+    :title="'Thermal Report — ' . $report->inspection_date"
+    :lead="($report->inspector_name ?? '—') . ' · ' . ($report->facility ?? '—') . ($report->area_name ? ' / ' . $report->area_name : '')"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 @can('write')

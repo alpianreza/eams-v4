@@ -3,7 +3,13 @@
 @section('title', 'Tambah Inventory')
 
 @section('content')
-<h1 class="h4 mb-3">Tambah Compliance Inventory</h1>
+<x-page-header
+    variant="card"
+    tone="inventory"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-box-seam"
+    title="Tambah Compliance Inventory"
+/>
 
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 

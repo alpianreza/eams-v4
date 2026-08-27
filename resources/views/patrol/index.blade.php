@@ -3,7 +3,13 @@
 @section('title', 'Patrol Harian')
 
 @section('content')
-<h1 class="h4 mb-3">Patrol Harian</h1>
+<x-page-header
+    variant="card"
+    tone="patrol"
+    eyebrow="Security"
+    eyebrow-icon="bi-shield-check"
+    title="Patrol Harian"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 <div class="row g-3">

@@ -3,7 +3,13 @@
 @section('title', 'Dashboard Compliance')
 
 @section('content')
-<h1 class="h4 mb-3">Dashboard Compliance</h1>
+<x-page-header
+    variant="card"
+    tone="compliance"
+    eyebrow="Monitoring"
+    eyebrow-icon="bi-speedometer2"
+    title="Dashboard Compliance"
+/>
 
 <div class="row g-3 mb-3">
     <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="display-6 fw-bold">{{ $total }}</div><div class="text-muted small">Inventory aktif</div></div></div></div>

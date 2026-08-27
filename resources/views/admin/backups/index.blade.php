@@ -3,10 +3,17 @@
 @section('title', 'Backups')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Backups</h1>
-    <form method="POST" action="{{ route('admin.backups.store') }}">@csrf<button class="btn btn-sm btn-primary">Buat Backup</button></form>
-</div>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Administrasi"
+    eyebrow-icon="bi-cloud-arrow-down"
+    title="Backups"
+>
+    <x-slot:actions>
+        <form method="POST" action="{{ route('admin.backups.store') }}">@csrf<button class="btn btn-sm btn-primary">Buat Backup</button></form>
+    </x-slot:actions>
+</x-page-header>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 <p class="text-muted small">Retensi: {{ $retentionDays }} hari (otomatis dipangkas oleh scheduler).</p>
 

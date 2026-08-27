@@ -3,11 +3,14 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\LoginSessionController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Calendar\CalendarController;
 use App\Http\Controllers\Checklist\ChecklistController;
 use App\Http\Controllers\Checklist\GridChecklistController;
+use App\Http\Controllers\Compliance\ChecklistMasterController;
 use App\Http\Controllers\Compliance\ComplianceInventoryController;
+use App\Http\Controllers\Compliance\PrintController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Ems\EmsReportController;
 use App\Http\Controllers\Evidence\EvidenceController;
@@ -29,6 +32,7 @@ use App\Http\Controllers\Questionnaire\QuestionnaireController;
 use App\Http\Controllers\Ranking\RankingController;
 use App\Http\Controllers\Report\ComplianceReportController;
 use App\Http\Controllers\SelfServiceController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Thermal\ThermalImagingController;
 use App\Http\Controllers\Utility\UtilityLogController;
 use Illuminate\Support\Facades\Route;
@@ -52,9 +56,27 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/password', [SelfServiceController::class, 'editPassword'])->name('self.password.edit');
     Route::post('settings/password', [SelfServiceController::class, 'updatePassword'])->name('self.password.update');
 
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('settings/company', [SettingsController::class, 'storeCompany'])->name('settings.company');
+    Route::post('settings/email', [SettingsController::class, 'storeEmail'])->name('settings.email');
+    Route::post('settings/whatsapp', [SettingsController::class, 'storeWhatsApp'])->name('settings.whatsapp');
+    Route::post('settings/contact', [SettingsController::class, 'storeContact'])->name('settings.contact');
+
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    // User management (admin-only).
+    Route::middleware('can:manage-users')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::post('users/roles', [UserController::class, 'storeRole'])->name('users.roles.store');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::post('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
+        Route::post('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+    });
 
     // Monitoring layer (§7).
     Route::get('compliance/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
@@ -120,6 +142,24 @@ Route::middleware('auth')->group(function () {
     Route::post('compliance/checklist-grid/{itemType}/set', [GridChecklistController::class, 'set'])->name('compliance.checklist.grid.set');
     Route::post('compliance/checklist-grid/{itemType}/mark-all', [GridChecklistController::class, 'markAll'])->name('compliance.checklist.grid.mark-all');
     Route::post('compliance/checklist-grid/{itemType}/clear', [GridChecklistController::class, 'clear'])->name('compliance.checklist.grid.clear');
+
+    // Checklist master (3-level: kategori -> item type -> pertanyaan).
+    Route::get('compliance/checklist-master', [ChecklistMasterController::class, 'index'])->name('checklist-master.index');
+    Route::get('compliance/checklist-master/category/{category}', [ChecklistMasterController::class, 'category'])->name('checklist-master.category');
+    Route::get('compliance/checklist-master/item/{itemType}', [ChecklistMasterController::class, 'item'])->name('checklist-master.item');
+    Route::post('compliance/checklist-master/item/{itemType}/question', [ChecklistMasterController::class, 'storeQuestion'])->name('checklist-master.question.store');
+    Route::put('compliance/checklist-master/question/{master}', [ChecklistMasterController::class, 'updateQuestion'])->name('checklist-master.question.update');
+    Route::delete('compliance/checklist-master/question/{master}', [ChecklistMasterController::class, 'destroyQuestion'])->name('checklist-master.question.destroy');
+    Route::post('compliance/checklist-master/item/{itemType}/frequency', [ChecklistMasterController::class, 'updateFrequency'])->name('checklist-master.frequency');
+
+    // Print center.
+    Route::middleware('can:access-print-center')->group(function () {
+        Route::get('compliance/print', [PrintController::class, 'index'])->name('print.index');
+        Route::get('compliance/print/item', [PrintController::class, 'item'])->name('print.item');
+        Route::get('compliance/print/inventory/{itemType}', [PrintController::class, 'inventoryByType'])->name('print.inventory-by-type');
+        Route::get('compliance/print/batch', [PrintController::class, 'batch'])->name('print.batch');
+        Route::get('compliance/print/batch/preview', [PrintController::class, 'batchPreview'])->name('print.batch-preview');
+    });
 
     Route::get('compliance/report/{inventory}/pdf', [ComplianceReportController::class, 'pdf'])
         ->name('compliance.report.pdf')->middleware('can:access-compliance-pdf');

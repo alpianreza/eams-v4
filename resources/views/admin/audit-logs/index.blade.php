@@ -3,7 +3,13 @@
 @section('title', 'Audit Logs')
 
 @section('content')
-<h1 class="h4 mb-3">Audit Logs</h1>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Administrasi"
+    eyebrow-icon="bi-journal-text"
+    title="Audit Logs"
+/>
 <div class="card"><div class="card-body p-0 table-responsive">
     <table class="table table-sm table-striped mb-0">
         <thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Deskripsi</th><th>IP</th></tr></thead>

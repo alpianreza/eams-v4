@@ -3,7 +3,13 @@
 @section('title', 'Kuesioner')
 
 @section('content')
-<h1 class="h4 mb-3">Pusat Kuesioner</h1>
+<x-page-header
+    variant="card"
+    tone="questionnaire"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-ui-checks"
+    title="Pusat Kuesioner"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 @can('manage-inventory')

@@ -9,6 +9,7 @@ return [
     ['group' => 'Utama', 'items' => [
         ['label' => 'Beranda', 'route' => 'home', 'icon' => 'house-door', 'page' => 'home'],
         ['label' => 'Notifikasi', 'route' => 'notifications.index', 'icon' => 'bell', 'page' => 'notifications'],
+        ['label' => 'Pengaturan', 'route' => 'settings.index', 'icon' => 'gear', 'page' => 'settings'],
     ]],
 
     ['group' => 'Compliance', 'items' => [
@@ -20,6 +21,7 @@ return [
         ['label' => 'Kalender', 'route' => 'calendar.index', 'icon' => 'calendar3', 'page' => 'calendar'],
         ['label' => 'Kuesioner', 'route' => 'questionnaire.index', 'icon' => 'ui-checks', 'page' => 'questionnaires'],
         ['label' => 'Thermal Imaging', 'route' => 'thermal.index', 'icon' => 'thermometer-half', 'page' => 'thermal_imaging'],
+        ['label' => 'Print Center', 'route' => 'print.index', 'icon' => 'printer', 'page' => 'print_center'],
     ]],
 
     ['group' => 'Boiler & Utility', 'items' => [
@@ -50,11 +52,13 @@ return [
         ['label' => 'Areas', 'route' => 'master-data.areas.index', 'icon' => 'geo-alt', 'page' => 'master_areas'],
         ['label' => 'Kategori', 'route' => 'master-data.categories.index', 'icon' => 'tags', 'page' => 'master_categories'],
         ['label' => 'Item Types', 'route' => 'master-data.item-types.index', 'icon' => 'list-check', 'page' => 'master_item_types'],
+        ['label' => 'Checklist Master', 'route' => 'checklist-master.index', 'icon' => 'clipboard-check', 'page' => 'checklist_master'],
         ['label' => 'Hari Libur', 'route' => 'master-data.holidays.index', 'icon' => 'calendar-x', 'page' => 'master_holidays'],
         ['label' => 'Karyawan', 'route' => 'master-data.employees.index', 'icon' => 'people', 'page' => 'master_employees'],
     ]],
 
     ['group' => 'Admin', 'items' => [
+        ['label' => 'Users', 'route' => 'users.index', 'icon' => 'people', 'page' => 'users_management'],
         ['label' => 'Audit Logs', 'route' => 'admin.audit-logs.index', 'icon' => 'journal-text', 'page' => 'admin_audit'],
         ['label' => 'Login Sessions', 'route' => 'admin.login-sessions.index', 'icon' => 'person-lines-fill', 'page' => 'admin_sessions'],
         ['label' => 'Backups', 'route' => 'admin.backups.index', 'icon' => 'cloud-arrow-down', 'page' => 'admin_backups'],

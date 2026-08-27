@@ -3,8 +3,14 @@
 @section('title', $label)
 
 @section('content')
-<h1 class="h4 mb-1">{{ $label }}</h1>
-<p class="text-muted small">Monitoring harian per tanggal · 1 baris per hari.</p>
+<x-page-header
+    variant="card"
+    tone="utility"
+    eyebrow="Boiler & Utility"
+    eyebrow-icon="bi-droplet"
+    :title="$label"
+    lead="Monitoring harian per tanggal · 1 baris per hari."
+/>
 
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif

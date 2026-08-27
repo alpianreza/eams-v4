@@ -3,7 +3,13 @@
 @section('title', 'Login Sessions')
 
 @section('content')
-<h1 class="h4 mb-3">Login Sessions</h1>
+<x-page-header
+    variant="card"
+    tone="soft"
+    eyebrow="Administrasi"
+    eyebrow-icon="bi-person-lines-fill"
+    title="Login Sessions"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 <div class="card"><div class="card-body p-0 table-responsive">
     <table class="table table-sm table-striped mb-0">

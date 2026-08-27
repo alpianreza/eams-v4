@@ -3,8 +3,14 @@
 @section('title', 'Checklist — ' . $inventory->asset_code)
 
 @section('content')
-<h1 class="h4 mb-1">Checklist — <code>{{ $inventory->asset_code }}</code></h1>
-<p class="text-muted">{{ $inventory->itemType->name ?? '—' }} · Periode: <strong>{{ $periodKey }}</strong> ({{ $inventory->itemType->checklist_frequency }})</p>
+<x-page-header
+    variant="card"
+    tone="checklist"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-clipboard-check"
+    :title="'Checklist — ' . $inventory->asset_code"
+    :lead-html="($inventory->itemType->name ?? '—') . ' · Periode: <strong>' . $periodKey . '</strong> (' . $inventory->itemType->checklist_frequency . ')'"
+/>
 
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif

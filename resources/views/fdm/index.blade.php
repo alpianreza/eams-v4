@@ -3,8 +3,14 @@
 @section('title', 'FDM Data Collection')
 
 @section('content')
-<h1 class="h4 mb-1">FDM Data Collection</h1>
-<p class="text-muted small">Data seksi produksi per tahun dengan nilai bulanan.</p>
+<x-page-header
+    variant="card"
+    tone="fdm"
+    eyebrow="IT"
+    eyebrow-icon="bi-collection"
+    title="FDM Data Collection"
+    lead="Data seksi produksi per tahun dengan nilai bulanan."
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 <form method="GET" class="d-flex gap-2 mb-3"><input type="number" name="year" value="{{ $year }}" class="form-control form-control-sm" style="width:100px"><button class="btn btn-sm btn-outline-secondary">Tahun</button></form>

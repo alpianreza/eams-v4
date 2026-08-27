@@ -3,7 +3,13 @@
 @section('title', 'Thermal Imaging')
 
 @section('content')
-<h1 class="h4 mb-3">Thermal Imaging</h1>
+<x-page-header
+    variant="card"
+    tone="compliance"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-thermometer-half"
+    title="Thermal Imaging"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 @can('write')

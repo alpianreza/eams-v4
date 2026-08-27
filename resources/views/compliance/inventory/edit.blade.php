@@ -3,7 +3,13 @@
 @section('title', 'Edit Inventory')
 
 @section('content')
-<h1 class="h4 mb-3">Edit Inventory — <code>{{ $inventory->asset_code }}</code></h1>
+<x-page-header
+    variant="card"
+    tone="inventory"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-box-seam"
+    :title="'Edit Inventory — ' . $inventory->asset_code"
+/>
 
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 

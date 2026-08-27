@@ -20,3 +20,17 @@ Referensi import `php artisan eams:import` (2L). Sumber = koneksi `legacy` (READ
 | checklist_logs.status | status | TRANSFORM → ok/not_ok/na (Q-001) |
 | compliance_inventory.created_at dsb. | — | DROP (timestamp lama tak dibawa) |
 | kolom tak dikenal | — | REVIEW → tercatat di error report, tidak dibawa |
+
+---
+
+## Cara menjalankan
+
+```bash
+php artisan migrate                    # siapkan schema (termasuk app_settings)
+php artisan eams:import --dry-run      # preview, tidak menulis
+php artisan eams:import                # import sungguhan
+```
+
+- **Optimasi (2026-08-27):** `importChecklistLogs` diubah dari `updateOrCreate` per baris (OOM 512MB + ~1,5 jam untuk 107k log) menjadi streaming: preload map `users` + `inventory→asset_item_type_id`, hapus tabel sekali, lalu bulk insert per chunk 1000. Idempoten secara efek (hasil akhir sama tiap run).
+- **Catatan:** `checklist_logs` tidak punya unique index sehingga bulk `upsert` MySQL tidak dedupe → dipilih full-replace (delete + insert). Pastikan `checklist_log_histories` kosong saat import (FK restrict).
+- **Anti OOM:** jangan tampung semua baris sekaligus — proses per chunk.

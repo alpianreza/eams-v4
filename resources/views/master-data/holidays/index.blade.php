@@ -3,7 +3,13 @@
 @section('title', 'Hari Libur — Master Data')
 
 @section('content')
-<h1 class="h4 mb-3">Hari Libur</h1>
+<x-page-header
+    variant="card"
+    tone="utility"
+    eyebrow="Master Data"
+    eyebrow-icon="bi-calendar-x"
+    title="Hari Libur"
+/>
 
 @can('manage-master-data')
 <div class="card mb-4"><div class="card-body">

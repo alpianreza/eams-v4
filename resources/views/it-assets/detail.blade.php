@@ -3,8 +3,14 @@
 @section('title', $asset->asset_name)
 
 @section('content')
-<h1 class="h4 mb-1">{{ $asset->asset_name }}</h1>
-<p class="text-muted"><code>{{ $asset->inventory_no }}</code> · status {{ $asset->status }}</p>
+<x-page-header
+    variant="card"
+    tone="it"
+    eyebrow="IT"
+    eyebrow-icon="bi-laptop"
+    :title="$asset->asset_name"
+    :lead-html="'<code>' . $asset->inventory_no . '</code> · status ' . $asset->status"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
 

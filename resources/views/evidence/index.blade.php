@@ -3,7 +3,13 @@
 @section('title', 'Evidence Center')
 
 @section('content')
-<h1 class="h4 mb-3">Evidence Center — Temuan NOT_OK</h1>
+<x-page-header
+    variant="card"
+    tone="evidence"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-exclamation-triangle"
+    title="Evidence Center — Temuan NOT_OK"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 <form method="GET" class="d-flex gap-2 mb-3">

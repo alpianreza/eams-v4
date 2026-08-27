@@ -3,8 +3,14 @@
 @section('title', 'EMS — ' . $label)
 
 @section('content')
-<h1 class="h4 mb-1">EMS Report — {{ $label }}</h1>
-<p class="text-muted small">Konsumsi bulanan per seksi · 1 entri per seksi/bulan/tahun.</p>
+<x-page-header
+    variant="card"
+    tone="ems"
+    eyebrow="EMS / GHG"
+    eyebrow-icon="bi-lightning-charge"
+    :title="'EMS Report — ' . $label"
+    lead="Konsumsi bulanan per seksi · 1 entri per seksi/bulan/tahun."
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
 

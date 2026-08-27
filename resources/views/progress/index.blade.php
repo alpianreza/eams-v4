@@ -3,8 +3,14 @@
 @section('title', 'Progress Monitoring')
 
 @section('content')
-<h1 class="h4 mb-3">Progress Monitoring</h1>
-<p class="text-muted small">Status periode berjalan per inventory (engine periode — late time-based).</p>
+<x-page-header
+    variant="card"
+    tone="compliance"
+    eyebrow="Monitoring"
+    eyebrow-icon="bi-bar-chart-line"
+    title="Progress Monitoring"
+    lead="Status periode berjalan per inventory (engine periode — late time-based)."
+/>
 
 <div class="card"><div class="card-body p-0 table-responsive">
     <table class="table table-sm table-striped mb-0">

@@ -3,8 +3,14 @@
 @section('title', 'Ranking PIC')
 
 @section('content')
-<h1 class="h4 mb-3">Ranking PIC</h1>
-<p class="text-muted small">Skor = tepat waktu ×10 + terlambat ×3.</p>
+<x-page-header
+    variant="card"
+    tone="compliance"
+    eyebrow="Monitoring"
+    eyebrow-icon="bi-trophy"
+    title="Ranking PIC"
+    lead="Skor = tepat waktu ×10 + terlambat ×3."
+/>
 
 <div class="card"><div class="card-body p-0">
     <table class="table table-striped mb-0">

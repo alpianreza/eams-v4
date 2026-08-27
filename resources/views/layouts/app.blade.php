@@ -1,25 +1,29 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Beranda') — {{ config('eams.company_name', 'EAMS') }}</title>
+    <title>@yield('title', 'Beranda') - {{ config('eams.company_name', 'EAMS') }}</title>
+
+    <script>
+        (function () {
+            try {
+                var k = 'eams-theme';
+                var t = localStorage.getItem(k) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-bs-theme', t);
+            } catch (e) {}
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <style>
-        body { background: #f4f6f9; }
-        .sidebar { position: fixed; top: 0; bottom: 0; left: 0; width: 250px; background: #1e2a38; color: #cfd8e3; overflow-y: auto; z-index: 100; }
-        .sidebar .brand { padding: 1rem 1.25rem; font-weight: 700; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: .5rem; }
-        .sidebar .group { padding: .9rem 1.25rem .35rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #7d8b9c; }
-        .sidebar a { display: flex; align-items: center; gap: .6rem; padding: .45rem 1.25rem; color: #cfd8e3; text-decoration: none; font-size: .9rem; }
-        .sidebar a:hover { background: rgba(255,255,255,.06); color: #fff; }
-        .sidebar a.active { background: #0d6efd; color: #fff; border-radius: .35rem; margin: 0 .5rem; padding-left: .75rem; }
-        .sidebar a i { width: 1.1rem; }
-        .main { margin-left: 250px; min-height: 100vh; display: flex; flex-direction: column; }
-        .topbar { background: #fff; border-bottom: 1px solid #e3e8ee; padding: .6rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
-        .content { padding: 1.5rem; flex: 1; }
-        @media (max-width: 768px) { .sidebar { width: 0; overflow: hidden; } .main { margin-left: 0; } }
-    </style>
+    <link rel="stylesheet" href="{{ asset('assets/css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/page-header.css') }}">
+    @stack('styles')
 </head>
 <body>
     @auth
@@ -37,18 +41,21 @@
 
     <div class="main">
         <div class="topbar">
-            <div class="fw-semibold text-muted">@yield('title', 'Beranda')</div>
+            <div class="topbar-title">@yield('title', 'Beranda')</div>
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('notifications.index') }}" class="text-muted position-relative text-decoration-none">
+                <button type="button" class="theme-toggle" onclick="window.__eams.toggleTheme()" title="Ganti tema" aria-label="Ganti tema">
+                    <i class="bi bi-moon-stars" data-theme-icon></i>
+                </button>
+                <a href="{{ route('notifications.index') }}" class="text-body-secondary position-relative text-decoration-none" title="Notifikasi">
                     <i class="bi bi-bell"></i>
                     @if($unreadNotifications > 0)
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">{{ $unreadNotifications }}</span>
                     @endif
                 </a>
                 <div class="dropdown">
-                    <a class="text-decoration-none text-dark dropdown-toggle" data-bs-toggle="dropdown" href="#">{{ auth()->user()->name }}</a>
+                    <a class="text-decoration-none text-body dropdown-toggle" data-bs-toggle="dropdown" href="#">{{ auth()->user()->name }}</a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><span class="dropdown-item-text small text-muted">{{ ucfirst(auth()->user()->role) }} · {{ auth()->user()->permission }}</span></li>
+                        <li><span class="dropdown-item-text small text-body-secondary">{{ ucfirst(auth()->user()->role) }} / {{ auth()->user()->permission }}</span></li>
                         <li><a class="dropdown-item" href="{{ route('self.password.edit') }}"><i class="bi bi-key me-2"></i>Ganti Password</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><form method="POST" action="{{ route('logout') }}">@csrf<button class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Logout</button></form></li>
@@ -67,5 +74,24 @@
     @endauth
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    @stack('scripts')
+    <script>
+        window.__eams = window.__eams || {};
+        (function () {
+            var KEY = 'eams-theme';
+            function apply(t) {
+                document.documentElement.setAttribute('data-bs-theme', t);
+                document.querySelectorAll('[data-theme-icon]').forEach(function (i) {
+                    i.className = 'bi ' + (t === 'dark' ? 'bi-sun' : 'bi-moon-stars');
+                });
+            }
+            window.__eams.toggleTheme = function () {
+                var cur = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+                apply(cur);
+                try { localStorage.setItem(KEY, cur); } catch (e) {}
+            };
+            apply(document.documentElement.getAttribute('data-bs-theme') || 'light');
+        })();
+    </script>
 </body>
 </html>

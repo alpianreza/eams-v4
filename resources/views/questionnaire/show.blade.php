@@ -3,8 +3,14 @@
 @section('title', $questionnaire->title)
 
 @section('content')
-<h1 class="h4 mb-1">{{ $questionnaire->title }}</h1>
-<p class="text-muted small">Link publik: <code>/kuesioner/{{ $questionnaire->slug }}</code></p>
+<x-page-header
+    variant="card"
+    tone="questionnaire"
+    eyebrow="Compliance"
+    eyebrow-icon="bi-ui-checks"
+    :title="$questionnaire->title"
+    :lead-html="'Link publik: <code>/kuesioner/' . $questionnaire->slug . '</code>'"
+/>
 @if(session('status'))<div class="alert alert-success py-2">{{ session('status') }}</div>@endif
 
 <div class="row g-3">

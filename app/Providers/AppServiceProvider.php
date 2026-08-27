@@ -24,5 +24,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-compliance-pdf', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance') || $user->canAccessPage('compliance'));
         // Admin-only system tools (audit logs, login sessions, backups).
         Gate::define('manage-system', fn (User $user): bool => $user->isAdmin());
+        // System settings (admin or compliance).
+        Gate::define('manage-settings', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance'));
+        // Print center (admin, compliance, auditor).
+        Gate::define('access-print-center', fn (User $user): bool => $user->isAdmin() || $user->hasRole('compliance') || $user->hasRole('auditor'));
+        // User management (admin-only).
+        Gate::define('manage-users', fn (User $user): bool => $user->isAdmin());
     }
 }

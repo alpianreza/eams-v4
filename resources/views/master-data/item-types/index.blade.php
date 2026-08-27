@@ -3,7 +3,13 @@
 @section('title', 'Item Type — Master Data')
 
 @section('content')
-<h1 class="h4 mb-3">Asset Item Type</h1>
+<x-page-header
+    variant="card"
+    tone="utility"
+    eyebrow="Master Data"
+    eyebrow-icon="bi-list-check"
+    title="Asset Item Type"
+/>
 
 @can('manage-master-data')
 <div class="card mb-4"><div class="card-body">

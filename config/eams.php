@@ -40,4 +40,22 @@ return [
     'backup_path' => env('EAMS_BACKUP_PATH', 'backups'),
     'backup_disk' => env('EAMS_BACKUP_DISK', 'local'),
 
+    // Canonical roles (BR-41) + default page_access per role (page key dari config/menu.php).
+    'roles' => [
+        'admin' => ['label' => 'Administrator', 'description' => 'Akses penuh ke semua modul.'],
+        'compliance' => ['label' => 'Compliance', 'description' => 'Kelola inventory, checklist, evidence, dan laporan compliance.'],
+        'security' => ['label' => 'Security', 'description' => 'Akses patroli keamanan.'],
+        'staff' => ['label' => 'Staff', 'description' => 'Pengisian checklist harian.'],
+        'auditor' => ['label' => 'Auditor', 'description' => 'Pemantauan dan laporan read-only.'],
+        'office' => ['label' => 'Office', 'description' => 'Entri data EMS, FDM, dan utility.'],
+    ],
+
+    'role_default_pages' => [
+        'admin' => null,
+        'compliance' => ['home', 'notifications', 'dashboard', 'compliance_inventory', 'progress', 'evidence', 'ranking', 'calendar', 'questionnaires', 'thermal_imaging', 'print_center', 'ems_reports', 'fdm_data_collection', 'master_areas', 'master_categories', 'master_item_types', 'master_holidays', 'master_employees', 'checklist_master', 'settings'],
+        'security' => ['home', 'notifications', 'patrol_daily', 'settings'],
+        'staff' => ['home', 'notifications', 'compliance_inventory', 'calendar', 'settings'],
+        'auditor' => ['home', 'notifications', 'dashboard', 'progress', 'evidence', 'ranking', 'compliance_inventory', 'print_center', 'questionnaires', 'checklist_master', 'settings'],
+        'office' => ['home', 'notifications', 'ems_reports', 'fdm_data_collection', 'boiler_fuel', 'pdam_water', 'pdam_water_boiler', 'ipal', 'settings'],
+    ],
 ];
