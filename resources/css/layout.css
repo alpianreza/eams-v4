@@ -1,0 +1,220 @@
+/* =============================================================================
+   EAMS v4 — App shell: sidebar, topbar, area konten.
+   Bergantung pada tokens.css. Tidak ada hex mentah di file ini.
+   ============================================================================= */
+
+/* ---------- Skip link (aksesibilitas) ---------- */
+.skip-link {
+  position: absolute; left: var(--s-3); top: -60px; z-index: 200;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--c-primary); color: var(--c-primary-contrast);
+  font-size: var(--t-sm); font-weight: 600; text-decoration: none;
+  transition: top var(--transition-base);
+}
+.skip-link:focus { top: var(--s-3); color: var(--c-primary-contrast); }
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0;
+  width: var(--layout-sidebar-w);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--c-sidebar-deep) 0%, var(--c-sidebar) 26%);
+  color: var(--c-sidebar-text);
+  border-right: 1px solid var(--c-sidebar-border);
+  box-shadow: var(--e-2);
+  z-index: 100;
+}
+
+.sidebar .brand {
+  display: flex; align-items: center; gap: var(--s-3);
+  flex: 0 0 auto;
+  padding: var(--s-4) var(--s-4);
+  min-height: var(--layout-header-h);
+  color: #ffffff;
+  text-decoration: none;
+  background: var(--c-sidebar-deep);
+  border-bottom: 1px solid var(--c-sidebar-border);
+}
+.sidebar .brand:hover { color: #ffffff; }
+.brand__logo {
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--grad-brand);
+  color: #ffffff;
+  font-size: 1.15rem;
+  box-shadow: 0 6px 16px -8px rgba(var(--c-primary-rgb), 0.9);
+}
+.sidebar .brand i { font-size: 1.15rem; }
+.brand__text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.brand__name {
+  font-weight: 800; font-size: var(--t-lg); letter-spacing: .02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.brand__meta { color: var(--c-sidebar-muted); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+
+.sidebar__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--s-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-sidebar-border) transparent;
+}
+.sidebar__scroll::-webkit-scrollbar { width: 8px; }
+.sidebar__scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar__scroll::-webkit-scrollbar-thumb { background: var(--c-sidebar-border); border-radius: var(--r-full); }
+.sidebar__scroll::-webkit-scrollbar-thumb:hover { background: var(--c-sidebar-muted); }
+
+.sidebar .group {
+  padding: var(--s-4) var(--s-4) var(--s-1);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--c-sidebar-muted);
+}
+
+.sidebar a:not(.brand) {
+  position: relative;
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  margin: 2px var(--s-2);
+  border-radius: var(--r-md);
+  color: var(--c-sidebar-text);
+  text-decoration: none; font-size: var(--t-sm); font-weight: 500;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+.sidebar a:not(.brand):hover { background: rgba(255, 255, 255, .07); color: #ffffff; }
+.sidebar a:not(.brand):focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.sidebar a:not(.brand) i { width: 1.15rem; text-align: center; font-size: 1rem; opacity: .85; }
+
+.sidebar a.active {
+  background: linear-gradient(90deg, rgba(var(--c-primary-rgb), .95), rgba(var(--c-primary-rgb), .72));
+  color: #ffffff; font-weight: 600;
+  box-shadow: 0 8px 20px -12px rgba(var(--c-primary-rgb), 1);
+}
+.sidebar a.active i { opacity: 1; }
+.sidebar a.active::before {
+  content: ""; position: absolute; left: calc(var(--s-2) * -1 + 2px); top: 50%;
+  width: 3px; height: 60%; transform: translateY(-50%);
+  border-radius: var(--r-full);
+  background: #ffffff;
+}
+
+.sidebar__footer {
+  flex: 0 0 auto;
+  padding: var(--s-3) var(--s-4);
+  border-top: 1px solid var(--c-sidebar-border);
+  background: var(--c-sidebar-deep);
+  color: var(--c-sidebar-muted);
+  font-size: var(--t-xs);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
+}
+
+.sidebar-backdrop { display: none; }
+.mobile-menu-toggle { display: none; }
+
+/* ---------- Area utama ---------- */
+.main { margin-left: var(--layout-sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  min-height: var(--layout-header-h);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: 0 var(--s-5);
+  background: color-mix(in srgb, var(--c-surface) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(10px);
+  border-bottom: 1px solid var(--c-border);
+}
+.topbar-title { font-weight: 700; font-size: var(--t-lg); color: var(--c-text); letter-spacing: -.01em; }
+.topbar__actions { display: flex; align-items: center; gap: var(--s-2); }
+
+/* Tombol ikon bulat pada topbar */
+.icon-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+  background: var(--c-surface-sunk);
+  color: var(--c-text);
+  text-decoration: none;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.icon-btn:hover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-soft); }
+.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--c-primary-soft); }
+.icon-btn__badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-full);
+  border: 2px solid var(--c-surface);
+  background: var(--c-late); color: #ffffff;
+  font-size: 10px; font-weight: 700; line-height: 1;
+}
+
+/* Tombol tema memakai gaya yang sama */
+.theme-toggle { composes: icon-btn; }
+
+/* Chip pengguna */
+.user-chip {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-2) var(--s-1) var(--s-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+  background: var(--c-surface-sunk);
+  color: var(--c-text);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.user-chip:hover { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-text); }
+.user-chip::after { margin-right: var(--s-1); }
+.user-chip__avatar {
+  width: 28px; height: 28px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-full);
+  background: var(--grad-brand);
+  color: #ffffff;
+  font-size: 11px; font-weight: 800; letter-spacing: .02em;
+}
+.user-chip__name { font-size: var(--t-sm); font-weight: 600; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding: var(--s-5);
+}
+
+.card { border: 1px solid var(--c-border); box-shadow: var(--e-1); }
+.card-header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
+
+/* ---------- Responsif ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    width: min(var(--layout-sidebar-w), 86vw);
+    transform: translateX(-105%);
+    transition: transform var(--transition-base);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .sidebar-backdrop {
+    position: fixed; inset: 0; z-index: 90; display: block;
+    background: var(--c-overlay);
+    backdrop-filter: blur(2px);
+  }
+  .mobile-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .main { margin-left: 0; }
+  .topbar { padding: 0 var(--s-3); }
+  .topbar-title { font-size: var(--t-base); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-chip__name { display: none; }
+  .content { padding: var(--s-3); }
+}
+
+/* ---------- Cetak ---------- */
+@media print {
+  .sidebar, .sidebar-backdrop, .topbar, .toast-host { display: none !important; }
+  .main { margin-left: 0 !important; }
+  .content { padding: 0 !important; max-width: none !important; }
+}
