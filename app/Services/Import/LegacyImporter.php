@@ -85,7 +85,7 @@ class LegacyImporter
                 DB::table('users')->upsert([
                     'username' => $username,
                     'name' => $row->name ?? $username,
-                    'email' => $row->email ?: null,
+                    'email' => ($row->email ?? null) ?: null,
                     'password' => (string) ($row->password ?? ''),
                     'photo' => $row->photo ?? null,
                     'role' => $this->mapRole((string) ($row->role ?? 'staff')),
