@@ -1,6 +1,6 @@
 /* =============================================================================
    EAMS v4 — App shell: sidebar, topbar, area konten.
-   Bergantung pada tokens.css. Tidak ada hex mentah di file ini.
+   Bergantung pada tokens.css. Tidak ada hex mentah kecuali putih murni.
    ============================================================================= */
 
 /* ---------- Skip link (aksesibilitas) ---------- */
@@ -30,7 +30,7 @@
 .sidebar .brand {
   display: flex; align-items: center; gap: var(--s-3);
   flex: 0 0 auto;
-  padding: var(--s-4) var(--s-4);
+  padding: var(--s-3) var(--s-4);
   min-height: var(--layout-header-h);
   color: #ffffff;
   text-decoration: none;
@@ -83,7 +83,7 @@
   border-radius: var(--r-md);
   color: var(--c-sidebar-text);
   text-decoration: none; font-size: var(--t-sm); font-weight: 500;
-  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 .sidebar a:not(.brand):hover { background: rgba(255, 255, 255, .07); color: #ffffff; }
 .sidebar a:not(.brand):focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
@@ -95,21 +95,15 @@
   box-shadow: 0 8px 20px -12px rgba(var(--c-primary-rgb), 1);
 }
 .sidebar a.active i { opacity: 1; }
-.sidebar a.active::before {
-  content: ""; position: absolute; left: calc(var(--s-2) * -1 + 2px); top: 50%;
-  width: 3px; height: 60%; transform: translateY(-50%);
-  border-radius: var(--r-full);
-  background: #ffffff;
-}
 
 .sidebar__footer {
   flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
   padding: var(--s-3) var(--s-4);
   border-top: 1px solid var(--c-sidebar-border);
   background: var(--c-sidebar-deep);
   color: var(--c-sidebar-muted);
   font-size: var(--t-xs);
-  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
 }
 
 .sidebar-backdrop { display: none; }
@@ -130,8 +124,8 @@
 .topbar-title { font-weight: 700; font-size: var(--t-lg); color: var(--c-text); letter-spacing: -.01em; }
 .topbar__actions { display: flex; align-items: center; gap: var(--s-2); }
 
-/* Tombol ikon bulat pada topbar */
-.icon-btn {
+/* ---------- Tombol ikon bulat (dipakai topbar + tombol tema) ---------- */
+.icon-btn, .theme-toggle {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center;
   width: 2.25rem; height: 2.25rem; padding: 0;
@@ -142,8 +136,9 @@
   text-decoration: none;
   transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
 }
-.icon-btn:hover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-soft); }
-.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--c-primary-soft); }
+.icon-btn:hover, .theme-toggle:hover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-soft); }
+.icon-btn:focus-visible, .theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--c-primary-soft); }
+.icon-btn::after, .theme-toggle::after { display: none; }
 .icon-btn__badge {
   position: absolute; top: -4px; right: -4px;
   min-width: 18px; height: 18px; padding: 0 5px;
@@ -154,13 +149,10 @@
   font-size: 10px; font-weight: 700; line-height: 1;
 }
 
-/* Tombol tema memakai gaya yang sama */
-.theme-toggle { composes: icon-btn; }
-
-/* Chip pengguna */
+/* ---------- Chip pengguna ---------- */
 .user-chip {
   display: inline-flex; align-items: center; gap: var(--s-2);
-  padding: var(--s-1) var(--s-2) var(--s-1) var(--s-1);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-1);
   border: 1px solid var(--c-border);
   border-radius: var(--r-full);
   background: var(--c-surface-sunk);
@@ -169,16 +161,15 @@
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 .user-chip:hover { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-text); }
-.user-chip::after { margin-right: var(--s-1); }
 .user-chip__avatar {
   width: 28px; height: 28px; flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--r-full);
   background: var(--grad-brand);
   color: #ffffff;
-  font-size: 11px; font-weight: 800; letter-spacing: .02em;
+  font-size: 11px; font-weight: 800;
 }
-.user-chip__name { font-size: var(--t-sm); font-weight: 600; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-chip__name { font-size: var(--t-sm); font-weight: 600; max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .content {
   flex: 1;
