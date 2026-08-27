@@ -2,10 +2,6 @@
 
 @section('title', 'Checklist Master')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/checklist-master.css') }}">
-@endpush
-
 @section('content')
 <div class="checklist-master-page">
     <x-page-header
@@ -17,9 +13,10 @@
         lead="Pilih kategori untuk mengelola item dan pertanyaan checklist." />
 
     @if($categories->isEmpty())
-        <div class="card">
-            <div class="card-body py-5 text-center text-muted">Belum ada kategori inventory aktif.</div>
-        </div>
+        <x-empty-state
+            icon="bi-layers"
+            title="Belum ada kategori inventory aktif."
+            text="Aktifkan minimal satu kategori inventory di Master Data untuk mulai menyusun checklist." />
     @else
         @php
             $styleMap = [
