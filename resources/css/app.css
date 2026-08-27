@@ -13,6 +13,7 @@
 @import './auth.css';
 @import './checklist-master.css';
 @import './print.css';
+@import './shell.css';
 
 /* Tailwind dimuat terakhir, ber-prefix `eams:` dan tanpa Preflight.
    Strategi ini menjaga halaman Bootstrap lama tetap stabil selama migrasi. */

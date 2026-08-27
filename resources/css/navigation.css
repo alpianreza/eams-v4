@@ -18,8 +18,8 @@
   box-shadow: 0 0 12px color-mix(in srgb, var(--c-primary) 55%, transparent);
 }
 
-.content {
-  animation: eams-page-enter 260ms cubic-bezier(.2, .75, .25, 1) both;
+[data-eams-page-content] {
+  animation: eams-page-enter 220ms cubic-bezier(.2, .75, .25, 1) both;
 }
 
 html.is-navigating .navigation-progress {
@@ -27,10 +27,10 @@ html.is-navigating .navigation-progress {
   animation: eams-navigation-progress 900ms cubic-bezier(.15, .7, .2, 1) forwards;
 }
 
-html.is-navigating .content {
+html.is-navigating [data-eams-page-content] {
   opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 110ms ease, transform 110ms ease;
+  transform: translateY(3px);
+  transition: opacity 90ms ease, transform 90ms ease;
   animation: none;
   pointer-events: none;
 }
@@ -40,14 +40,8 @@ html.is-navigating body {
 }
 
 @keyframes eams-page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(7px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes eams-navigation-progress {
@@ -58,8 +52,8 @@ html.is-navigating body {
 
 @media (prefers-reduced-motion: reduce) {
   .navigation-progress { display: none; }
-  .content,
-  html.is-navigating .content {
+  [data-eams-page-content],
+  html.is-navigating [data-eams-page-content] {
     opacity: 1;
     transform: none;
     animation: none;

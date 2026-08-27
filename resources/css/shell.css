@@ -1,0 +1,51 @@
+/* Detail shell yang tidak efisien ditulis sebagai utility. Struktur dan layout
+   utama tetap memakai utility Tailwind ber-prefix `eams:` di Blade. */
+[data-eams-shell="sidebar"] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-sidebar-border) transparent;
+}
+
+[data-eams-shell="sidebar"] ::-webkit-scrollbar {
+    width: 8px;
+}
+
+[data-eams-shell="sidebar"] ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+[data-eams-shell="sidebar"] ::-webkit-scrollbar-thumb {
+    border-radius: var(--r-full);
+    background: var(--c-sidebar-border);
+}
+
+.eams-nav-link[data-current],
+.eams-nav-link.is-active {
+    background: var(--c-primary);
+    color: var(--c-primary-contrast);
+    box-shadow: var(--e-2);
+}
+
+.eams-nav-link[data-current] i,
+.eams-nav-link.is-active i {
+    opacity: 1;
+}
+
+[data-eams-shell="topbar"] {
+    background: color-mix(in srgb, var(--c-surface) 96%, transparent);
+}
+
+@supports (backdrop-filter: blur(8px)) {
+    [data-eams-shell="topbar"] {
+        backdrop-filter: saturate(140%) blur(8px);
+    }
+}
+
+@media print {
+    [data-eams-shell="sidebar"],
+    [data-eams-shell="topbar"],
+    [data-eams-shell="backdrop"],
+    .toast-host,
+    .navigation-progress {
+        display: none !important;
+    }
+}
