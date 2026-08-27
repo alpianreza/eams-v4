@@ -2,10 +2,6 @@
 
 @section('title', $category->name . ' — Checklist Master')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/checklist-master.css') }}">
-@endpush
-
 @section('content')
 <div class="checklist-master-page">
     <x-page-header
@@ -18,9 +14,10 @@
         back-url="{{ route('checklist-master.index') }}" />
 
     @if($items->isEmpty())
-        <div class="card">
-            <div class="card-body py-5 text-center text-muted">Belum ada item checklist pada kategori ini.</div>
-        </div>
+        <x-empty-state
+            icon="bi-clipboard-x"
+            title="Belum ada item checklist pada kategori ini."
+            text="Tambahkan item type pada kategori ini lebih dulu melalui Master Data." />
     @else
         @php
             $itemIcons = [

@@ -2,10 +2,6 @@
 
 @section('title', 'Print Center')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/print.css') }}">
-@endpush
-
 @section('content')
 <div class="print-center-page">
 
@@ -51,8 +47,21 @@
     (function () {
         const container = document.getElementById('printContent');
 
+        const skeleton = '<div class="surface-card"><div class="surface-card__body">'
+            + '<div class="skeleton skeleton--title"></div>'
+            + '<div class="skeleton skeleton--text"></div>'
+            + '<div class="skeleton skeleton--text"></div>'
+            + '<div class="skeleton skeleton--text" style="width:60%"></div>'
+            + '</div></div>';
+
+        function notifyError(message) {
+            if (typeof window.eamsToast === 'function') {
+                window.eamsToast(message, 'error');
+            }
+        }
+
         function loadPrintContent(url) {
-            container.innerHTML = '<div class="text-center p-4 text-muted">Loading...</div>';
+            container.innerHTML = skeleton;
 
             fetch(url)
                 .then(res => {
@@ -72,6 +81,7 @@
                 })
                 .catch(() => {
                     container.innerHTML = '<div class="text-center p-4 text-danger">Gagal memuat konten.</div>';
+                    notifyError('Gagal memuat konten cetak. Silakan coba lagi.');
                 });
         }
 
