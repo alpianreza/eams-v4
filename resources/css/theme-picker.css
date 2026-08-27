@@ -1,0 +1,8 @@
+/* Warna pratinjau tombol aksen pada theme picker.
+   Nilai warna mentah hanya boleh muncul di tokens.css dan file ini. */
+.accent-swatch[data-accent="indigo"]  { --swatch: linear-gradient(135deg, #3a5bda, #0e9384); }
+.accent-swatch[data-accent="emerald"] { --swatch: linear-gradient(135deg, #0e9f6e, #0891b2); }
+.accent-swatch[data-accent="violet"]  { --swatch: linear-gradient(135deg, #7c3aed, #db2777); }
+.accent-swatch[data-accent="amber"]   { --swatch: linear-gradient(135deg, #d97706, #0e9384); }
+.accent-swatch[data-accent="rose"]    { --swatch: linear-gradient(135deg, #e11d48, #7c3aed); }
+.accent-swatch[data-accent="ocean"]   { --swatch: linear-gradient(135deg, #0891b2, #2563eb); }

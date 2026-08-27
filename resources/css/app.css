@@ -6,6 +6,7 @@
 @import './tokens.css';
 @import './layout.css';
 @import './components.css';
+@import './theme-picker.css';
 @import './page-header.css';
 @import './checklist-master.css';
 @import './print.css';
