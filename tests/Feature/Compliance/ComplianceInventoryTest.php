@@ -70,6 +70,7 @@ class ComplianceInventoryTest extends TestCase
         $inventory = ComplianceInventory::create([
             'inventory_category_id' => $category->id, 'asset_item_type_id' => $itemType->id,
             'area_id' => $area->id, 'asset_code' => 'FS-APAR-001', 'status' => 'good', 'qty' => 1,
+            'active' => true,
         ]);
 
         // BR-45: posting different category/area/item_type must NOT change them.
@@ -80,6 +81,7 @@ class ComplianceInventoryTest extends TestCase
             'status' => 'need_repair',
             'qty' => 2,
             'specific_area' => 'Line B',
+            'active' => 0,
         ])->assertRedirect();
 
         $inventory->refresh();
@@ -88,6 +90,7 @@ class ComplianceInventoryTest extends TestCase
         $this->assertSame($area->id, $inventory->area_id);          // locked
         $this->assertSame('need_repair', $inventory->status);        // editable
         $this->assertSame('Line B', $inventory->specific_area);
+        $this->assertFalse($inventory->active);                      // unchecked switch posts 0
     }
 
     public function test_expired_does_not_auto_mean_not_active(): void
@@ -112,5 +115,66 @@ class ComplianceInventoryTest extends TestCase
         $this->actingAs($reader)->post(route('compliance.inventory.store'), [
             'inventory_category_id' => $category->id, 'asset_item_type_id' => $itemType->id, 'status' => 'good', 'qty' => 1,
         ])->assertForbidden();   // global write-guard
+    }
+
+    public function test_inventory_list_uses_bootstrap_pagination_without_oversized_svg_arrows(): void
+    {
+        [$category, $itemType, $area] = $this->makeContext();
+
+        foreach (range(1, 21) as $number) {
+            ComplianceInventory::create([
+                'inventory_category_id' => $category->id,
+                'asset_item_type_id' => $itemType->id,
+                'area_id' => $area->id,
+                'asset_code' => sprintf('FS-APAR-%03d', $number),
+                'status' => 'good',
+                'qty' => 1,
+            ]);
+        }
+
+        $this->actingAs($this->admin())
+            ->get(route('compliance.inventory.index'))
+            ->assertOk()
+            ->assertSee('pagination', false)
+            ->assertSee('page-item', false)
+            ->assertDontSee('<svg', false);
+    }
+
+    public function test_inventory_detail_renders_structured_information_and_secure_media_urls(): void
+    {
+        [$category, $itemType, $area] = $this->makeContext();
+        $inventory = ComplianceInventory::create([
+            'inventory_category_id' => $category->id,
+            'asset_item_type_id' => $itemType->id,
+            'area_id' => $area->id,
+            'asset_code' => 'FS-APAR-025',
+            'type_description' => 'CO2 3,5 Kg',
+            'specific_area' => 'Lobi utama',
+            'status' => 'good',
+            'qty' => 1,
+            'photo' => 'inventory-025.webp',
+            'qr_image' => 'qr-025.svg',
+            'active' => true,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('compliance.inventory.detail', $inventory))
+            ->assertOk()
+            ->assertSee('detail-layout', false)
+            ->assertSee('Identitas aset')
+            ->assertSee('Penempatan &amp; tanggung jawab', false)
+            ->assertSee(route('files.show', ['category' => 'qr', 'path' => $inventory->qr_image]), false)
+            ->assertSee(route('files.show', ['category' => 'inventory', 'path' => $inventory->photo]), false);
+    }
+
+    public function test_inventory_forms_support_secure_photo_uploads(): void
+    {
+        $this->makeContext();
+
+        $this->actingAs($this->admin())
+            ->get(route('compliance.inventory.create'))
+            ->assertOk()
+            ->assertSee('enctype="multipart/form-data"', false)
+            ->assertSee('name="photo"', false);
     }
 }
