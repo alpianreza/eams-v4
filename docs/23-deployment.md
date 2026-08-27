@@ -1,99 +1,105 @@
 # 23 — Deployment Runbook (EAMS Laravel)
 
-> Target: Windows on-prem (`eams.ptyhs.com`), PHP 8.5, MariaDB/MySQL. **DB baru yang clean** (Q-002) — bukan menunjuk DB CI4. Legacy CI4 **tetap berjalan** sampai cutover divalidasi (rollback = kembali ke CI4).
+> Target: Windows/on-prem atau Docker, Laravel 12, PHP 8.2, MySQL. Gunakan database Laravel baru; database CI4 hanya dibaca melalui koneksi `legacy` sampai cutover selesai.
 
 ## 1. Prasyarat
-- PHP **8.5** + Composer.
-- MariaDB/MySQL (production 10.4.32) — buat **database BARU** (mis. `eams_laravel`), charset `utf8mb4`.
-- Web server (IIS/Apache/Nginx) mengarah ke `public/`.
-- Folder untuk **file storage** (bisa network share, mis. `\\SERVER-FILE\EAMS` atau `D:\EAMS\files`).
 
-## 2. Konfigurasi `.env`
-Salin `.env.example` → `.env`, isi:
+- PHP **8.2** dan Composer.
+- Node.js **22** dan npm untuk build frontend.
+- MySQL 8.0; buat database baru, misalnya `eams_laravel`, charset `utf8mb4`.
+- Web server diarahkan ke folder `public/`.
+- Snapshot/backup database sebelum cutover.
+
+## 2. Build aplikasi
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm install --no-audit --no-fund
+npm run build
+cp .env.example .env
+php artisan key:generate
 ```
+
+Vite menghasilkan asset production di `public/build`. Jangan menjalankan `npm run dev` di server produksi.
+
+## 3. Konfigurasi `.env`
+
+```env
 APP_NAME="PT YHS EAMS"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://eams.ptyhs.com
-APP_KEY=            # php artisan key:generate
 
 DB_CONNECTION=mysql
-DB_HOST=...
+DB_HOST=127.0.0.1
+DB_PORT=3306
 DB_DATABASE=eams_laravel
 DB_USERNAME=...
 DB_PASSWORD=...
 
-# Koneksi READ-ONLY ke DB CI4 (untuk import) — jangan dipakai menulis.
-DB_LEGACY_HOST=...
-DB_LEGACY_DATABASE=eams_ci4
-DB_LEGACY_USERNAME=...
-DB_LEGACY_PASSWORD=...
+# Koneksi READ-ONLY ke database CI4.
+LEGACY_DB_HOST=127.0.0.1
+LEGACY_DB_PORT=3306
+LEGACY_DB_DATABASE=asset_compliance_system
+LEGACY_DB_USERNAME=...
+LEGACY_DB_PASSWORD=...
 
 QUEUE_CONNECTION=database
-SESSION_LIFETIME=480          # 8 jam (menit)
-
-# Branding & business config (config/eams.php):
+SESSION_LIFETIME=480
 EAMS_COMPANY_NAME="PT YHS EAMS"
-EAMS_SATURDAY_HOLIDAY_EFFECTIVE=2026-04-01   # Q-005 (TIDAK retroaktif)
-EAMS_DEVICE_ONLINE_THRESHOLD_SECONDS=600     # Q-012
-EAMS_AGENT_HEARTBEAT_INTERVAL=300
-EAMS_AGENT_COMMAND_POLL_INTERVAL=30
-EAMS_FILES_BASE_PATH=          # root file storage (Q-022)
-EAMS_UPLOAD_MAX_KB=5120
-EAMS_BACKUP_RETENTION_DAYS=30  # BR-39
-EAMS_BACKUP_PATH=backups
-EAMS_BACKUP_DISK=local
-
-# Notifikasi (SECRET — jangan commit):
-MAIL_MAILER=smtp ...           # SMTP Google Workspace (BR-24)
-FONNTE_TOKEN=...               # WA gateway (BR-24)
+EAMS_BACKUP_RETENTION_DAYS=30
 ```
 
-## 3. Storage
-- `php artisan storage:link` (bila pakai disk `public`).
-- Pastikan root tiap disk kategori (inventory/checklist/qr/attachments) menunjuk `EAMS_FILES_BASE_PATH` (config/filesystems.php membaca `config/eams.php`).
+Nama variabel yang benar adalah **`LEGACY_DB_*`**, bukan `DB_LEGACY_*`.
 
-## 4. Migrasi schema + import data legacy
-```
-php artisan migrate --force                 # schema baru
-php artisan eams:import --dry-run           # UJI dulu: laporkan mapping + issue, TANPA menulis
-php artisan eams:import                     # import riil (idempotent — bisa diulang)
-```
-- Tinjau **migration issues log** (asset_code duplikat, checked_by tak cocok, PIC > 2) — jangan diam-diam diubah.
-- Pindahkan file legacy (foto inventory/checklist/evidence/QR) ke storage baru.
-- **Validasi:** rekonsiliasi count/sum per tabel vs produksi; sampling histori checklist; pastikan QR lama tetap resolve (`compliance/inventory/detail/{id}`).
+## 4. Schema dan import legacy
 
-## 5. Scheduler (menggantikan schtasks Windows) — §15
-Satu entri **Windows Task Scheduler** tiap menit:
+```bash
+php artisan migrate --force
+php artisan eams:import --dry-run
+php artisan eams:import
 ```
-Program: C:\path\to\php.exe
-Args:    C:\path\to\eams-v4\artisan schedule:run
-Trigger: setiap 1 menit
-```
-(Alternatif service: `php artisan schedule:work`.) Jadwal yang berjalan:
-- `eams:backup full --prune` — **harian 01:00** (BR-39).
-- `eams:remind-checklists` — **Senin 08:00** (BR-23, hormati hari libur).
-- `eams:device-status-check` — **tiap menit** (Q-012).
 
-## 6. Queue worker
-```
+Perilaku importer:
+
+- source CI4 tidak pernah ditulis;
+- dry-run menjalankan jalur import lengkap lalu rollback;
+- seluruh target import berada dalam satu transaction;
+- jika ada error validasi, seluruh perubahan target di-rollback;
+- checklist legacy memakai `legacy_id`, sehingga rerun memperbarui baris yang sama tanpa menghapus checklist baru atau audit history;
+- tetap lakukan rekonsiliasi jumlah dan sampling data sebelum cutover.
+
+Importer saat ini berfokus pada data inti inventory/checklist. Tabel modul legacy lain wajib dinyatakan dan dipetakan sebelum diklaim ikut bermigrasi.
+
+## 5. Cache, storage, scheduler, dan queue
+
+```bash
+php artisan storage:link
+php artisan config:cache
+php artisan view:cache
 php artisan queue:work database --sleep=3 --tries=3
+php artisan schedule:work
 ```
-Jalankan sebagai Windows service / Task Scheduler (auto-restart). Pantau `failed_jobs`.
 
-## 7. DATA YANG HARUS DIKUMPULKAN SAAT CUTOVER (bukan coding)
-- **Q-015** — inventarisasi **scheduler/cron aktual** di server produksi (siapa cek & kapan) → pastikan semua dipetakan ke Laravel Scheduler.
-- **Q-016** — verifikasi **`asset_categories.id=1`** = kategori IT (cek tabel produksi) → memastikan perilaku kategori IT benar.
-- **Q-018** — ekspor **`app_settings`** produksi (token SMTP/Fonnte, template pesan, nama perusahaan) → isi ke `.env`/settings; **secret jangan masuk repo**.
+Jadwal aktif:
 
-## 8. Cutover checklist
-1. Schema baru + import divalidasi (langkah 4) di environment staging/test.
-2. Scheduler + queue worker berjalan (langkah 5–6).
-3. Smoke test: login (username/email), checklist fill, QR scan, PDF, agent heartbeat.
-4. Switch DNS/webroot ke Laravel. Legacy CI4 tetap ada (rollback instan).
-5. Pantau audit logs + login sessions + backup berjalan.
+- backup dan prune harian pukul 01:00;
+- reminder checklist Senin pukul 08:00;
+- pemeriksaan status device setiap menit.
 
-## 9. Rollback
-- Import idempotent → bisa bersihkan DB target & ulangi tanpa menyentuh CI4.
-- Cutover gagal → arahkan kembali ke CI4 (data sumber tak diubah import).
-- Snapshot/backup DB target sebelum cutover.
+## 6. Cutover
+
+1. Backup database CI4 dan Laravel.
+2. Jalankan migration dan dry-run.
+3. Pastikan dry-run exit 0 dan tidak ada mapping error.
+4. Jalankan import riil.
+5. Rekonsiliasi jumlah data inti dan sampling histori checklist.
+6. Uji login, inventory, checklist, QR, PDF, Settings, Users, queue, dan scheduler.
+7. Arahkan webroot/DNS ke Laravel.
+8. Pertahankan CI4 sebagai rollback sampai hasil produksi disetujui.
+
+## 7. Rollback
+
+- Kembalikan webroot/DNS ke CI4.
+- Restore snapshot database Laravel jika dibutuhkan.
+- Jangan menghapus database CI4 selama masa validasi.
