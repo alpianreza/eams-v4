@@ -1,0 +1,83 @@
+/* =============================================================================
+   EAMS v4 — Halaman autentikasi (login).
+   Bergantung pada tokens.css. Tidak ada hex mentah kecuali putih murni.
+   ============================================================================= */
+
+.auth-page { min-height: 100vh; background: var(--c-canvas); }
+
+.auth-page__theme { position: fixed; top: var(--s-4); right: var(--s-4); z-index: 30; }
+
+.auth-shell {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  min-height: 100vh;
+}
+
+/* ---------- Panel kiri (branding) ---------- */
+.auth-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  gap: var(--s-6);
+  padding: var(--s-7);
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(var(--c-primary-rgb), .55), transparent 42%),
+    linear-gradient(150deg, var(--c-sidebar-deep) 0%, var(--c-sidebar) 46%, color-mix(in srgb, var(--c-primary) 55%, var(--c-sidebar)) 100%);
+}
+.auth-hero::after {
+  content: "";
+  position: absolute; right: -120px; bottom: -140px;
+  width: 420px; height: 420px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: var(--r-full);
+  pointer-events: none;
+}
+
+.auth-hero__brand { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-3); }
+.auth-hero__logo {
+  width: 46px; height: 46px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--grad-brand);
+  font-size: 1.35rem;
+  box-shadow: 0 12px 28px -14px rgba(var(--c-primary-rgb), 1);
+}
+.auth-hero__name { font-size: var(--t-xl); font-weight: 800; letter-spacing: .01em; }
+.auth-hero__tag { display: block; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+
+.auth-hero__body { position: relative; z-index: 1; }
+.auth-hero__title { margin: 0 0 var(--s-3); font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.auth-hero__lead { max-width: 48ch; margin: 0; color: rgba(255, 255, 255, .72); font-size: var(--t-lg); line-height: 1.7; }
+.auth-hero__list { list-style: none; display: grid; gap: var(--s-3); margin: var(--s-5) 0 0; padding: 0; }
+.auth-hero__list li { display: flex; align-items: flex-start; gap: var(--s-2); color: rgba(255, 255, 255, .8); font-size: var(--t-sm); line-height: 1.5; }
+.auth-hero__list i { color: var(--c-accent); font-size: 1rem; }
+
+.auth-hero__footer { position: relative; z-index: 1; color: rgba(255, 255, 255, .5); font-size: var(--t-xs); }
+
+/* ---------- Panel kanan (form) ---------- */
+.auth-panel { display: flex; align-items: center; justify-content: center; padding: var(--s-6) var(--s-5); }
+.auth-card { width: 100%; max-width: 420px; }
+.auth-card__mobile-brand { display: none; align-items: center; gap: var(--s-3); margin-bottom: var(--s-5); color: var(--c-text); }
+.auth-card__head { margin-bottom: var(--s-5); }
+.auth-card__title { margin: 0 0 var(--s-1); font-size: var(--t-2xl); font-weight: 800; letter-spacing: -.02em; color: var(--c-text); }
+.auth-card__lead { margin: 0; color: var(--c-text-muted); font-size: var(--t-sm); line-height: 1.6; }
+.auth-card__box {
+  padding: var(--s-5);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: var(--e-3);
+}
+.auth-card__footer { margin: var(--s-4) 0 0; text-align: center; color: var(--c-text-subtle); font-size: var(--t-xs); }
+
+.auth-form .form-label { font-size: var(--t-sm); font-weight: 600; color: var(--c-text); }
+.auth-form .form-control { padding: .625rem .875rem; border-radius: var(--r-md); }
+.auth-form .btn-primary { padding: .625rem 1rem; border-radius: var(--r-md); font-weight: 700; }
+
+@media (max-width: 991.98px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-hero { display: none; }
+  .auth-panel { min-height: 100vh; }
+  .auth-card__mobile-brand { display: flex; }
+}
