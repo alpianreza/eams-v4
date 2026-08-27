@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,6 +16,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // The application uses Bootstrap 5. Keep paginator markup aligned with the
+        // actual frontend stack so Laravel's default Tailwind SVG arrows never leak
+        // into list pages at their intrinsic (very large) size.
+        Paginator::useBootstrapFive();
+
         // Authorization expressed via Gates/Policies — never hard-coded in controllers.
         Gate::define('write', fn (User $user): bool => $user->hasWriteAccess());
         Gate::define('access-page', fn (User $user, string $page): bool => $user->canAccessPage($page));

@@ -1,0 +1,68 @@
+/* =============================================================================
+   EAMS v4 — progressive page navigation feedback.
+   Kecepatan sengaja singkat: terasa halus tanpa memperlambat pekerjaan operator.
+   ============================================================================= */
+
+.navigation-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2100;
+  width: 100%;
+  height: 3px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--c-primary), var(--c-accent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--c-primary) 55%, transparent);
+}
+
+.content {
+  animation: eams-page-enter 260ms cubic-bezier(.2, .75, .25, 1) both;
+}
+
+html.is-navigating .navigation-progress {
+  opacity: 1;
+  animation: eams-navigation-progress 900ms cubic-bezier(.15, .7, .2, 1) forwards;
+}
+
+html.is-navigating .content {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 110ms ease, transform 110ms ease;
+  animation: none;
+  pointer-events: none;
+}
+
+html.is-navigating body {
+  cursor: progress;
+}
+
+@keyframes eams-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes eams-navigation-progress {
+  0% { transform: scaleX(.06); }
+  45% { transform: scaleX(.62); }
+  100% { transform: scaleX(.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress { display: none; }
+  .content,
+  html.is-navigating .content {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    transition: none;
+  }
+}

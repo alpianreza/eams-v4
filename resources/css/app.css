@@ -5,6 +5,7 @@
 /* Design system EAMS: urutan penting (token dulu, baru komponen). */
 @import './tokens.css';
 @import './layout.css';
+@import './navigation.css';
 @import './components.css';
 @import './theme-picker.css';
 @import './page-header.css';

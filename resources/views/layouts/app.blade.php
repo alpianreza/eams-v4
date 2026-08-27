@@ -37,6 +37,8 @@
     @stack('styles')
 </head>
 <body x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false">
+    <div class="navigation-progress" aria-hidden="true"></div>
+
     @auth
     @php($unreadNotifications = \App\Models\Notification::where('user_id', auth()->id())->whereNull('read_at')->count())
     @php($flashToasts = collect([

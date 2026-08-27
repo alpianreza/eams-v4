@@ -188,4 +188,104 @@ Alpine.data('themeSwitcher', () => ({
     },
 }));
 
+/* -----------------------------------------------------------------------------
+ * Navigasi halaman klasik Laravel: feedback keluar/masuk yang ringan.
+ * Hanya link GET internal yang aman yang diberi jeda pendek. Download, hash,
+ * modifier-click, dan kontrol Bootstrap tidak pernah dicegat.
+ * -------------------------------------------------------------------------- */
+const root = document.documentElement;
+const reduceMotion = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+let navigationTimer = null;
+
+function resetNavigationState() {
+    root.classList.remove('is-navigating');
+
+    if (navigationTimer !== null) {
+        window.clearTimeout(navigationTimer);
+        navigationTimer = null;
+    }
+}
+
+function beginNavigation() {
+    root.classList.add('is-navigating');
+}
+
+function canAnimateLink(event, link) {
+    if (
+        event.defaultPrevented
+        || event.button !== 0
+        || event.metaKey
+        || event.ctrlKey
+        || event.shiftKey
+        || event.altKey
+        || link.hasAttribute('download')
+        || link.hasAttribute('data-no-transition')
+        || link.hasAttribute('data-bs-toggle')
+        || link.hasAttribute('data-bs-dismiss')
+        || (link.target && link.target.toLowerCase() !== '_self')
+    ) {
+        return false;
+    }
+
+    const rawHref = link.getAttribute('href');
+    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) {
+        return false;
+    }
+
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || !['http:', 'https:'].includes(url.protocol)) {
+        return false;
+    }
+
+    if (url.pathname === window.location.pathname && url.search === window.location.search) {
+        return false;
+    }
+
+    // Secure file and generated-PDF routes may answer with a download without
+    // unloading the current page; fading the page in that case would leave it dim.
+    if (/\/(?:files|download|export)(?:\/|$)/.test(url.pathname) || /\/pdf(?:\/|$)/.test(url.pathname)) {
+        return false;
+    }
+
+    return true;
+}
+
+window.addEventListener('click', (event) => {
+    const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+
+    if (!link || !canAnimateLink(event, link) || (reduceMotion && reduceMotion.matches)) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (root.classList.contains('is-navigating')) {
+        return;
+    }
+
+    beginNavigation();
+    navigationTimer = window.setTimeout(() => {
+        window.location.assign(link.href);
+    }, 115);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
+    if (!(form instanceof HTMLFormElement) || (form.target && form.target !== '_self')) {
+        return;
+    }
+
+    queueMicrotask(() => {
+        if (!event.defaultPrevented) {
+            beginNavigation();
+        }
+    });
+});
+
+window.addEventListener('beforeunload', beginNavigation);
+window.addEventListener('pageshow', resetNavigationState);
+
 Alpine.start();
