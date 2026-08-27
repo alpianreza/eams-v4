@@ -16,28 +16,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Print Center (port dari CI4 CompliancePrintController).
- *
- * Mode (1) Print Per Inventory me-reuse PDF report yang sudah ada
- * (route `compliance.report.pdf`); mode (2) Print Batch membangun form
- * kolektif bulanan + findings lewat Dompdf.
- *
- * Authorization: gate `access-print-center` (admin, compliance, auditor) —
- * diterapkan pada route group di routes/web.php dan di-assert ulang di
- * constructor. Catatan: base controller v4 adalah skeleton Laravel polos,
- * sehingga helper $this->middleware() tidak tersedia di project ini.
+ * Authorization is applied by the can:access-print-center route middleware.
  */
 class PrintController extends Controller
 {
-    public function __construct()
-    {
-        abort_unless(auth()->user()?->can('access-print-center'), 403);
-    }
-
     /** Item types yang PUNYA minimal satu inventory aktif. */
     protected function printableItemTypes()
     {
         return AssetItemType::query()
-            ->whereHas('inventories', fn ($q) => $q->where('active', true))
+            ->whereHas('inventories', fn ($query) => $query->where('active', true))
             ->orderBy('name')
             ->get();
     }
@@ -91,9 +78,7 @@ class PrintController extends Controller
             ->get();
 
         $monthKey = sprintf('%04d-%02d', $year, $month);
-
-        $logsQuery = ChecklistLog::query()
-            ->whereIn('inventory_id', $inventories->pluck('id'));
+        $logsQuery = ChecklistLog::query()->whereIn('inventory_id', $inventories->pluck('id'));
 
         if ($frequency === ChecklistPeriod::FREQ_MONTHLY) {
             $logsQuery->where('period_key', $monthKey);
@@ -105,7 +90,6 @@ class PrintController extends Controller
 
         $logs = $logsQuery->orderByDesc('check_date')->orderByDesc('id')->get();
 
-        // Matrix inventory × master dengan agregasi (not_ok menang; lalu ok; lalu na; selain itu nilai terakhir).
         $matrix = [];
         foreach ($logs as $log) {
             $current = $matrix[$log->inventory_id][$log->checklist_master_id] ?? null;
@@ -143,17 +127,14 @@ class PrintController extends Controller
         );
     }
 
-    /** Agregasi dua status untuk satu sel: not_ok > ok > na, selain itu nilai terakhir. */
     protected function aggregateStatus(?string $current, string $next): string
     {
         if ($current === ChecklistLog::STATUS_NOT_OK || $next === ChecklistLog::STATUS_NOT_OK) {
             return ChecklistLog::STATUS_NOT_OK;
         }
-
         if ($current === ChecklistLog::STATUS_OK || $next === ChecklistLog::STATUS_OK) {
             return ChecklistLog::STATUS_OK;
         }
-
         if ($current === ChecklistLog::STATUS_NA || $next === ChecklistLog::STATUS_NA) {
             return ChecklistLog::STATUS_NA;
         }
@@ -161,7 +142,6 @@ class PrintController extends Controller
         return $next !== '' ? $next : (string) $current;
     }
 
-    /** Logs not_ok → baris findings untuk batch form. */
     protected function buildFindings($logs, $inventories, $masters): array
     {
         $inventoryById = $inventories->keyBy('id');

@@ -65,7 +65,8 @@ class ChecklistMasterController extends Controller
         ChecklistMaster::create([
             'asset_item_type_id' => $itemType->id,
             'question' => $data['question'],
-            'frequency' => null,
+            // The DB column is non-null; inherit the owning item-type frequency.
+            'frequency' => $itemType->checklist_frequency,
             'require_photo' => $request->boolean('require_photo'),
             'active' => true,
         ]);
