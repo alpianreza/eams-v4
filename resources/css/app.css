@@ -1,5 +1,14 @@
+/* Entry point CSS — dibundel Vite (lihat vite.config.js). */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.css';
+
+/* Design system EAMS: urutan penting (token dulu, baru komponen). */
+@import './tokens.css';
+@import './layout.css';
+@import './components.css';
+@import './page-header.css';
+@import './checklist-master.css';
+@import './print.css';
 
 [x-cloak] {
     display: none !important;
