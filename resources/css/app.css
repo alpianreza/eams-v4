@@ -14,6 +14,11 @@
 @import './checklist-master.css';
 @import './print.css';
 
-[x-cloak] {
+/* Tailwind dimuat terakhir, ber-prefix `eams:` dan tanpa Preflight.
+   Strategi ini menjaga halaman Bootstrap lama tetap stabil selama migrasi. */
+@import './tailwind.css';
+
+[x-cloak],
+[wire\:cloak] {
     display: none !important;
 }

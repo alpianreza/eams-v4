@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   tests:
-    name: PHP 8.2 + Vite — Laravel 12
+    name: PHP 8.2 + Livewire 4 + Tailwind — Laravel 12
     runs-on: ubuntu-latest
 
     steps:
@@ -34,11 +34,19 @@ jobs:
           set +e
           exec > ci-output.txt 2>&1
 
-          echo "### npm install"
-          npm install --no-audit --no-fund
+          echo "### composer install"
+          composer install --prefer-dist --no-interaction --no-progress
+          COMPOSER_EXIT=$?
+          if [ $COMPOSER_EXIT -ne 0 ]; then
+            echo "### RESULT: composer install exit = $COMPOSER_EXIT"
+            exit $COMPOSER_EXIT
+          fi
+
+          echo "### npm ci"
+          npm ci --no-audit --no-fund
           NPM_EXIT=$?
           if [ $NPM_EXIT -ne 0 ]; then
-            echo "### RESULT: npm install exit = $NPM_EXIT"
+            echo "### RESULT: npm ci exit = $NPM_EXIT"
             exit $NPM_EXIT
           fi
 
@@ -48,14 +56,6 @@ jobs:
           if [ $VITE_EXIT -ne 0 ]; then
             echo "### RESULT: vite build exit = $VITE_EXIT"
             exit $VITE_EXIT
-          fi
-
-          echo "### composer install"
-          composer install --prefer-dist --no-interaction --no-progress
-          COMPOSER_EXIT=$?
-          if [ $COMPOSER_EXIT -ne 0 ]; then
-            echo "### RESULT: composer install exit = $COMPOSER_EXIT"
-            exit $COMPOSER_EXIT
           fi
 
           echo "### prepare (sqlite)"

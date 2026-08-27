@@ -1,0 +1,47 @@
+/* Tailwind CSS 4 coexistence layer.
+   - Prefix wajib: eams:
+   - Preflight sengaja tidak diimpor selama Bootstrap masih digunakan.
+   - Token visual tetap bersumber dari resources/css/tokens.css. */
+@import 'tailwindcss/theme.css' prefix(eams);
+@import 'tailwindcss/utilities.css' prefix(eams);
+
+@source '../views';
+@source '../../app';
+
+@theme prefix(eams) {
+    --font-sans: var(--f-sans);
+    --font-mono: var(--f-mono);
+    --color-canvas: var(--c-canvas);
+    --color-canvas-alt: var(--c-canvas-alt);
+    --color-surface: var(--c-surface);
+    --color-surface-sunk: var(--c-surface-sunk);
+    --color-surface-hover: var(--c-surface-hover);
+    --color-border: var(--c-border);
+    --color-border-strong: var(--c-border-strong);
+    --color-ink: var(--c-text);
+    --color-muted: var(--c-text-muted);
+    --color-subtle: var(--c-text-subtle);
+    --color-brand: var(--c-primary);
+    --color-brand-hover: var(--c-primary-hover);
+    --color-brand-soft: var(--c-primary-soft);
+    --color-brand-contrast: var(--c-primary-contrast);
+    --color-sidebar: var(--c-sidebar);
+    --color-sidebar-deep: var(--c-sidebar-deep);
+    --color-sidebar-border: var(--c-sidebar-border);
+    --color-sidebar-ink: var(--c-sidebar-text);
+    --color-sidebar-muted: var(--c-sidebar-muted);
+    --color-success: var(--c-ok);
+    --color-success-soft: var(--c-ok-soft);
+    --color-warning: var(--c-pending);
+    --color-warning-soft: var(--c-pending-soft);
+    --color-danger: var(--c-late);
+    --color-danger-soft: var(--c-late-soft);
+    --color-info: var(--c-info);
+    --color-info-soft: var(--c-info-soft);
+    --radius-eams-sm: var(--r-sm);
+    --radius-eams: var(--r-md);
+    --radius-eams-lg: var(--r-lg);
+    --shadow-eams-1: var(--e-1);
+    --shadow-eams-2: var(--e-2);
+    --shadow-eams-3: var(--e-3);
+}

@@ -1,11 +1,13 @@
 import * as bootstrap from 'bootstrap';
-import Alpine from 'alpinejs';
+import { Alpine, Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm';
 
 window.bootstrap = bootstrap;
 window.Alpine = Alpine;
+window.Livewire = Livewire;
 
 const THEME_KEY = 'eams-theme';
 const ACCENT_KEY = 'eams-accent';
+const SIDEBAR_KEY = 'eams-sidebar-collapsed';
 const MODES = ['light', 'dark', 'system'];
 const ACCENTS = ['indigo', 'emerald', 'violet', 'amber', 'rose', 'ocean'];
 
@@ -22,9 +24,19 @@ function readStored(key, fallback, allowed) {
     }
 }
 
+function readStoredBoolean(key, fallback = false) {
+    try {
+        const value = localStorage.getItem(key);
+
+        return value === null ? fallback : value === 'true';
+    } catch (error) {
+        return fallback;
+    }
+}
+
 function writeStored(key, value) {
     try {
-        localStorage.setItem(key, value);
+        localStorage.setItem(key, String(value));
     } catch (error) {
         // Diabaikan dengan sengaja.
     }
@@ -165,7 +177,6 @@ Alpine.store('toasts', {
     },
 });
 
-/* Helper global supaya skrip non-Alpine tetap bisa memunculkan toast. */
 window.eamsToast = (message, type = 'info', options = {}) =>
     Alpine.store('toasts').push({ ...options, type, message });
 
@@ -188,28 +199,67 @@ Alpine.data('themeSwitcher', () => ({
     },
 }));
 
+/* State application shell. Collapse hanya berdampak di desktop; drawer mobile
+ * tetap menampilkan label lengkap. */
+Alpine.data('eamsShell', () => ({
+    sidebarOpen: false,
+    sidebarCollapsed: readStoredBoolean(SIDEBAR_KEY),
+    userMenuOpen: false,
+
+    toggleCollapsed() {
+        this.sidebarCollapsed = ! this.sidebarCollapsed;
+        writeStored(SIDEBAR_KEY, this.sidebarCollapsed);
+    },
+
+    closeOverlays() {
+        this.sidebarOpen = false;
+        this.userMenuOpen = false;
+    },
+}));
+
+Alpine.data('eamsDropdown', () => ({
+    open: false,
+    toggle() {
+        this.open = ! this.open;
+    },
+    close() {
+        this.open = false;
+    },
+}));
+
 /* -----------------------------------------------------------------------------
- * Navigasi halaman klasik Laravel: feedback keluar/masuk yang ringan.
- * Hanya link GET internal yang aman yang diberi jeda pendek. Download, hash,
- * modifier-click, dan kontrol Bootstrap tidak pernah dicegat.
+ * Navigasi: wire:navigate menjadi jalur utama. Interceptor klasik dipertahankan
+ * hanya sebagai fallback untuk link GET internal yang belum dimigrasikan.
  * -------------------------------------------------------------------------- */
 const root = document.documentElement;
 const reduceMotion = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
     : null;
-let navigationTimer = null;
+let fallbackNavigationTimer = null;
+let navigationSafetyTimer = null;
 
 function resetNavigationState() {
     root.classList.remove('is-navigating');
 
-    if (navigationTimer !== null) {
-        window.clearTimeout(navigationTimer);
-        navigationTimer = null;
+    if (fallbackNavigationTimer !== null) {
+        window.clearTimeout(fallbackNavigationTimer);
+        fallbackNavigationTimer = null;
+    }
+
+    if (navigationSafetyTimer !== null) {
+        window.clearTimeout(navigationSafetyTimer);
+        navigationSafetyTimer = null;
     }
 }
 
 function beginNavigation() {
     root.classList.add('is-navigating');
+
+    if (navigationSafetyTimer !== null) {
+        window.clearTimeout(navigationSafetyTimer);
+    }
+
+    navigationSafetyTimer = window.setTimeout(resetNavigationState, 15000);
 }
 
 function canAnimateLink(event, link) {
@@ -220,6 +270,7 @@ function canAnimateLink(event, link) {
         || event.ctrlKey
         || event.shiftKey
         || event.altKey
+        || link.hasAttribute('wire:navigate')
         || link.hasAttribute('download')
         || link.hasAttribute('data-no-transition')
         || link.hasAttribute('data-bs-toggle')
@@ -243,8 +294,6 @@ function canAnimateLink(event, link) {
         return false;
     }
 
-    // Secure file and generated-PDF routes may answer with a download without
-    // unloading the current page; fading the page in that case would leave it dim.
     if (/\/(?:files|download|export)(?:\/|$)/.test(url.pathname) || /\/pdf(?:\/|$)/.test(url.pathname)) {
         return false;
     }
@@ -266,7 +315,7 @@ window.addEventListener('click', (event) => {
     }
 
     beginNavigation();
-    navigationTimer = window.setTimeout(() => {
+    fallbackNavigationTimer = window.setTimeout(() => {
         window.location.assign(link.href);
     }, 115);
 });
@@ -285,7 +334,19 @@ document.addEventListener('submit', (event) => {
     });
 });
 
+document.addEventListener('livewire:navigate', beginNavigation);
+document.addEventListener('livewire:navigating', (event) => {
+    beginNavigation();
+    event.detail?.onSwap?.(() => Alpine.store('theme').apply());
+});
+document.addEventListener('livewire:navigated', () => {
+    Alpine.store('theme').apply();
+    resetNavigationState();
+    document.dispatchEvent(new CustomEvent('eams:page-ready'));
+});
+
 window.addEventListener('beforeunload', beginNavigation);
 window.addEventListener('pageshow', resetNavigationState);
 
-Alpine.start();
+/* Livewire 4 menyertakan instance Alpine tunggal. Jangan panggil Alpine.start(). */
+Livewire.start();

@@ -33,6 +33,7 @@
         })();
     </script>
 
+    @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
@@ -142,6 +143,7 @@
         @yield('content')
     @endauth
 
+    @livewireScriptConfig
     @stack('scripts')
 </body>
 </html>
