@@ -6,69 +6,154 @@
 <x-page-header
     variant="card"
     tone="inventory"
-    eyebrow="Compliance"
-    eyebrow-icon="bi-box-seam"
-    :title="'Edit Inventory — ' . $inventory->asset_code"
-/>
+    eyebrow="Compliance inventory"
+    eyebrow-icon="bi-pencil-square"
+    :title="'Edit ' . $inventory->asset_code"
+    lead="Perbarui kondisi, lokasi spesifik, PIC, dan dokumentasi tanpa mengubah identitas utama aset."
+    :back-url="route('compliance.inventory.detail', $inventory)"
+>
+    <x-slot:actions>
+        <a href="{{ route('compliance.inventory.detail', $inventory) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-eye me-1" aria-hidden="true"></i> Lihat detail
+        </a>
+    </x-slot:actions>
+</x-page-header>
 
-@if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+<form method="POST" action="{{ route('compliance.inventory.update', $inventory) }}" enctype="multipart/form-data" class="form-shell">
+    @csrf
+    @method('PUT')
 
-<div class="card"><div class="card-body">
-    {{-- BR-45: category / area / item type are LOCKED on edit (shown read-only). --}}
-    <div class="row g-3 mb-3">
-        <div class="col-md-3"><label class="form-label text-muted">Kategori</label><div class="form-control-plaintext">{{ $inventory->category->name ?? '—' }}</div></div>
-        <div class="col-md-3"><label class="form-label text-muted">Item</label><div class="form-control-plaintext">{{ $inventory->itemType->name ?? '—' }}</div></div>
-        <div class="col-md-3"><label class="form-label text-muted">Area</label><div class="form-control-plaintext">{{ $inventory->area->name ?? '—' }}</div></div>
-        <div class="col-md-3"><label class="form-label text-muted">No Inventaris</label><div class="form-control-plaintext"><code>{{ $inventory->asset_code }}</code></div></div>
-    </div>
+    <section class="form-section">
+        <div class="form-section__heading">
+            <span class="form-section__icon"><i class="bi bi-lock" aria-hidden="true"></i></span>
+            <div>
+                <h2 class="form-section__title">Identitas terkunci</h2>
+                <p class="form-section__lead">Kategori, item, area utama, dan nomor inventory tidak dapat diubah setelah aset dibuat.</p>
+            </div>
+        </div>
 
-    <form method="POST" action="{{ route('compliance.inventory.update', $inventory) }}">
-        @csrf @method('PUT')
+        <div class="locked-fields">
+            <div class="locked-field">
+                <span class="locked-field__label">Kategori</span>
+                <span class="locked-field__value">{{ $inventory->category->name ?? '—' }}</span>
+            </div>
+            <div class="locked-field">
+                <span class="locked-field__label">Item</span>
+                <span class="locked-field__value">{{ $inventory->itemType->name ?? '—' }}</span>
+            </div>
+            <div class="locked-field">
+                <span class="locked-field__label">Area utama</span>
+                <span class="locked-field__value">{{ $inventory->area->name ?? '—' }}</span>
+            </div>
+            <div class="locked-field">
+                <span class="locked-field__label">Nomor inventory</span>
+                <span class="locked-field__value text-mono">{{ $inventory->asset_code }}</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <div class="form-section__heading">
+            <span class="form-section__icon"><i class="bi bi-sliders" aria-hidden="true"></i></span>
+            <div>
+                <h2 class="form-section__title">Kondisi &amp; penempatan</h2>
+                <p class="form-section__lead">Data operasional berikut dapat diperbarui sesuai kondisi lapangan.</p>
+            </div>
+        </div>
+
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label">Specific Area</label>
-                <input type="text" name="specific_area" value="{{ old('specific_area', $inventory->specific_area) }}" class="form-control">
+                <label for="specific_area" class="form-label">Lokasi spesifik</label>
+                <input id="specific_area" type="text" name="specific_area" value="{{ old('specific_area', $inventory->specific_area) }}" class="form-control @error('specific_area') is-invalid @enderror" placeholder="Contoh: Office Lt. 1 / Line A">
+                @error('specific_area')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+
             <div class="col-md-6">
-                <label class="form-label">Tipe / Spesifikasi</label>
-                <input type="text" name="type_description" value="{{ old('type_description', $inventory->type_description) }}" class="form-control">
+                <label for="type_description" class="form-label">Tipe / spesifikasi</label>
+                <input id="type_description" type="text" name="type_description" value="{{ old('type_description', $inventory->type_description) }}" class="form-control @error('type_description') is-invalid @enderror">
+                @error('type_description')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+
             <div class="col-md-4">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select" required>
-                    @foreach($statuses as $s)<option value="{{ $s }}" @selected(old('status', $inventory->status)===$s)>{{ str_replace('_',' ',$s) }}</option>@endforeach
+                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
+                    @foreach($statuses as $status)
+                        <option value="{{ $status }}" @selected(old('status', $inventory->status) === $status)>{{ match($status) { 'good' => 'Baik', 'need_repair' => 'Perlu perbaikan', default => 'Tidak aktif' } }}</option>
+                    @endforeach
                 </select>
+                @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+
             <div class="col-md-2">
-                <label class="form-label">Qty</label>
-                <input type="number" name="qty" value="{{ old('qty', $inventory->qty) }}" min="1" class="form-control" required>
+                <label for="qty" class="form-label">Jumlah <span class="text-danger">*</span></label>
+                <input id="qty" type="number" name="qty" value="{{ old('qty', $inventory->qty) }}" min="1" class="form-control @error('qty') is-invalid @enderror" required>
+                @error('qty')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+
             <div class="col-md-3">
-                <label class="form-label">Expired Date <small class="text-muted">(APAR)</small></label>
-                <input type="date" name="expired_date" value="{{ old('expired_date', $inventory->expired_date) }}" class="form-control">
+                <label for="expired_date" class="form-label">Tanggal kedaluwarsa</label>
+                <input id="expired_date" type="date" name="expired_date" value="{{ old('expired_date', $inventory->expired_date) }}" class="form-control @error('expired_date') is-invalid @enderror">
+                @error('expired_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+
             <div class="col-md-3 d-flex align-items-end">
-                <div class="form-check">
-                    <input type="checkbox" name="active" value="1" id="active" class="form-check-input" @checked(old('active', $inventory->active))>
-                    <label for="active" class="form-check-label">Aktif</label>
+                <div class="form-check form-switch mb-2">
+                    <input type="hidden" name="active" value="0">
+                    <input id="active" type="checkbox" name="active" value="1" class="form-check-input" @checked((bool) old('active', $inventory->active))>
+                    <label for="active" class="form-check-label">Inventory aktif</label>
                 </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">PIC (maks 2, setara)</label>
-                <select name="pic_ids[]" class="form-select" multiple size="3">
-                    @php($current = $inventory->pics->pluck('id')->all())
-                    @foreach($picUsers as $u)<option value="{{ $u->id }}" @selected(in_array($u->id, old('pic_ids', $current)))>{{ $u->name }} · {{ $u->username }}</option>@endforeach
+        </div>
+    </section>
+
+    <section class="form-section">
+        <div class="form-section__heading">
+            <span class="form-section__icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+            <div>
+                <h2 class="form-section__title">PIC &amp; dokumentasi</h2>
+                <p class="form-section__lead">Perbarui penanggung jawab, foto, dan catatan pendukung.</p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <label for="pic_ids" class="form-label">Person in charge</label>
+                @php($currentPics = old('pic_ids', $inventory->pics->pluck('id')->all()))
+                <select id="pic_ids" name="pic_ids[]" class="form-select @error('pic_ids') is-invalid @enderror" multiple size="5">
+                    @foreach($picUsers as $user)
+                        <option value="{{ $user->id }}" @selected(in_array((string) $user->id, array_map('strval', $currentPics), true))>{{ $user->name }} · {{ $user->username }}</option>
+                    @endforeach
                 </select>
+                @error('pic_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="form-text">Maksimal dua PIC dengan kedudukan setara.</div>
             </div>
+
+            <div class="col-lg-6">
+                <label for="photo" class="form-label">Ganti foto inventory</label>
+                <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="form-control @error('photo') is-invalid @enderror">
+                @error('photo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @if($inventory->photo)
+                    <div class="form-text">
+                        Foto tersimpan tersedia. <a href="{{ route('files.show', ['category' => 'inventory', 'path' => $inventory->photo]) }}" target="_blank" rel="noopener">Lihat foto saat ini</a>.
+                    </div>
+                @else
+                    <div class="form-text">Belum ada foto. JPG, PNG, atau WebP.</div>
+                @endif
+            </div>
+
             <div class="col-12">
-                <label class="form-label">Remark</label>
-                <textarea name="remark" class="form-control" rows="2">{{ old('remark', $inventory->remark) }}</textarea>
+                <label for="remark" class="form-label">Catatan</label>
+                <textarea id="remark" name="remark" class="form-control @error('remark') is-invalid @enderror" rows="3" placeholder="Kondisi, petunjuk lokasi, atau informasi tambahan...">{{ old('remark', $inventory->remark) }}</textarea>
+                @error('remark')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
         </div>
-        <div class="mt-3">
-            <button type="submit" class="btn btn-primary">Simpan</button>
-            <a href="{{ route('compliance.inventory.index') }}" class="btn btn-outline-secondary">Batal</a>
-        </div>
-    </form>
-</div></div>
+    </section>
+
+    <div class="form-actions">
+        <a href="{{ route('compliance.inventory.detail', $inventory) }}" class="btn btn-outline-secondary">Batal</a>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1" aria-hidden="true"></i> Simpan perubahan
+        </button>
+    </div>
+</form>
 @endsection
