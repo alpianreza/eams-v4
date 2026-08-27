@@ -8,10 +8,12 @@
     },
     "devDependencies": {
         "@popperjs/core": "2.11.8",
+        "@tailwindcss/vite": "4.3.3",
         "alpinejs": "3.14.8",
         "bootstrap": "5.3.3",
         "bootstrap-icons": "1.11.3",
         "laravel-vite-plugin": "1.2.0",
+        "tailwindcss": "4.3.3",
         "vite": "6.0.11"
     }
 }
