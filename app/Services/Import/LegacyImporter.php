@@ -4,7 +4,6 @@ namespace App\Services\Import;
 
 use App\Models\Area;
 use App\Models\AssetItemType;
-use App\Models\ChecklistLog;
 use App\Models\ChecklistMaster;
 use App\Models\ComplianceInventory;
 use App\Models\Employee;
@@ -15,19 +14,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Legacy CI4 → Laravel data import (2L). Reads the READ-ONLY `legacy` connection, writes
- * the clean Laravel DB. Repeatable + idempotent (upsert by business key), dry-run capable,
- * collects an error report. Missing legacy tables are SKIPPED (never fatal); FK links use a
- * legacy-id → new-id map; model observers suppressed (withoutEvents) so re-runs are clean.
+ * Legacy CI4 → Laravel data import (2L).
  *
- * Column mapping verified against the REAL legacy dump (eams_database.sql):
- *  - checklist_logs.checklist_template_id → checklist_master.id (legacy live join).
- *  - asset_item_types.inventory_category_id → inventory_categories.id.
- *  - users.page_access (JSON text) / wa_number / photo carried.
+ * The source connection is read-only. Target writes run in one transaction:
+ * dry-runs and imports containing validation errors are rolled back completely.
+ * Checklist logs use legacy_id plus a business-key fallback so reruns update the
+ * same rows without deleting application-created logs or audit histories.
  */
 class LegacyImporter
 {
     public array $report = [];
+
+    public bool $rolledBack = false;
 
     /** @var array<string, array<int|string, int>> legacy-id → new-id per table */
     protected array $map = [];
@@ -36,32 +34,58 @@ class LegacyImporter
 
     public function run(): array
     {
-        $this->importUsers();
-        $this->importAreas();
-        $this->importCategories();
-        $this->importItemTypes();
-        $this->importHolidays();
-        $this->importEmployees();
-        $this->importInventories();
-        $this->importInventoryPics();
-        $this->importChecklistMaster();
-        $this->importChecklistLogs();
+        $target = DB::connection();
+        $target->beginTransaction();
 
-        return $this->report;
+        try {
+            $this->importUsers();
+            $this->importAreas();
+            $this->importCategories();
+            $this->importItemTypes();
+            $this->importHolidays();
+            $this->importEmployees();
+            $this->importInventories();
+            $this->importInventoryPics();
+            $this->importChecklistMaster();
+            $this->importChecklistLogs();
+
+            $errorCount = array_sum(array_map(
+                fn (array $result): int => count($result['errors'] ?? []),
+                $this->report
+            ));
+
+            if ($this->dryRun || $errorCount > 0) {
+                $target->rollBack();
+                $this->rolledBack = true;
+            } else {
+                $target->commit();
+            }
+
+            return $this->report;
+        } catch (\Throwable $e) {
+            if ($target->transactionLevel() > 0) {
+                $target->rollBack();
+            }
+            $this->rolledBack = true;
+
+            throw $e;
+        }
     }
 
     protected function importUsers(): void
     {
         foreach ($this->rows('users', 'users') as $row) {
             $this->write('users', function () use ($row) {
-                $username = (string) $row->username;
+                $username = trim((string) ($row->username ?? ''));
+                if ($username === '') {
+                    throw new \RuntimeException("user#{$row->id}: username kosong");
+                }
 
-                // Query-builder upsert (NOT the model) so the legacy bcrypt password hash is
-                // carried EXACTLY (the model's 'hashed' cast would re-hash and break logins).
+                // Query builder preserves the original bcrypt hash exactly.
                 DB::table('users')->upsert([
                     'username' => $username,
                     'name' => $row->name ?? $username,
-                    'email' => $row->email ?? null,
+                    'email' => $row->email ?: null,
                     'password' => (string) ($row->password ?? ''),
                     'photo' => $row->photo ?? null,
                     'role' => $this->mapRole((string) ($row->role ?? 'staff')),
@@ -69,7 +93,7 @@ class LegacyImporter
                     'page_access' => $this->toJsonOrNull($row->page_access ?? null),
                     'status' => ($row->status ?? 'active') === 'active' ? 'active' : 'inactive',
                     'wa_number' => $row->wa_number ?? null,
-                    'created_at' => now(),
+                    'created_at' => $this->toDateTime($row->created_at ?? null) ?? now(),
                     'updated_at' => now(),
                 ], ['username'], ['name', 'email', 'password', 'photo', 'role', 'permission', 'page_access', 'status', 'wa_number', 'updated_at']);
 
@@ -83,7 +107,10 @@ class LegacyImporter
     {
         foreach ($this->rows('areas', 'areas') as $row) {
             $this->write('areas', function () use ($row) {
-                $area = Area::withoutEvents(fn () => Area::updateOrCreate(['name' => (string) $row->name], ['active' => (bool) ($row->active ?? true)]));
+                $area = Area::withoutEvents(fn () => Area::updateOrCreate(
+                    ['name' => (string) $row->name],
+                    ['active' => (bool) ($row->active ?? true)]
+                ));
                 $this->mapId('areas', $row->id ?? 0, $area->id);
             });
         }
@@ -95,7 +122,10 @@ class LegacyImporter
             $this->write('inventory_categories', function () use ($row) {
                 $cat = InventoryCategory::withoutEvents(fn () => InventoryCategory::updateOrCreate(
                     ['name' => (string) $row->name],
-                    ['code' => $row->code ?? strtoupper(substr((string) $row->name, 0, 3)), 'active' => (bool) ($row->active ?? true)]
+                    [
+                        'code' => $row->code ?? strtoupper(substr((string) $row->name, 0, 3)),
+                        'active' => (bool) ($row->active ?? true),
+                    ]
                 ));
                 $this->mapId('inventory_categories', $row->id ?? 0, $cat->id);
             });
@@ -106,14 +136,20 @@ class LegacyImporter
     {
         foreach ($this->rows('asset_item_types', 'asset_item_types') as $row) {
             $this->write('asset_item_types', function () use ($row) {
-                // FIX: legacy FK column is `inventory_category_id` (bukan category_id).
-                $categoryId = $this->mapped('inventory_categories', $row->inventory_category_id ?? $row->category_id ?? 0) ?? InventoryCategory::value('id');
+                $legacyCategoryId = $row->inventory_category_id ?? $row->category_id ?? 0;
+                $categoryId = $this->mapped('inventory_categories', $legacyCategoryId);
+                if (! $categoryId) {
+                    throw new \RuntimeException("item-type#{$row->id}: kategori {$legacyCategoryId} tidak ter-resolve");
+                }
+
                 $itemType = AssetItemType::withoutEvents(fn () => AssetItemType::updateOrCreate(
                     ['code' => (string) $row->code],
                     [
                         'inventory_category_id' => $categoryId,
                         'name' => $row->name ?? $row->code,
-                        'checklist_frequency' => in_array($row->checklist_frequency ?? '', ['daily', 'weekly', 'monthly'], true) ? $row->checklist_frequency : 'monthly',
+                        'checklist_frequency' => in_array($row->checklist_frequency ?? '', ['daily', 'weekly', 'monthly'], true)
+                            ? $row->checklist_frequency
+                            : 'monthly',
                         'allow_na' => (bool) ($row->allow_na ?? false),
                         'active' => (bool) ($row->active ?? true),
                     ]
@@ -127,8 +163,13 @@ class LegacyImporter
     {
         foreach ($this->rows('holidays', 'holidays') as $row) {
             $this->write('holidays', function () use ($row) {
+                $date = $this->toDate($row->holiday_date ?? null);
+                if (! $date) {
+                    throw new \RuntimeException("holiday#{$row->id}: tanggal tidak valid");
+                }
+
                 Holiday::withoutEvents(fn () => Holiday::updateOrCreate(
-                    ['holiday_date' => substr((string) $row->holiday_date, 0, 10)],
+                    ['holiday_date' => $date],
                     ['description' => $row->description ?? null]
                 ));
             });
@@ -141,7 +182,13 @@ class LegacyImporter
             $this->write('employees', function () use ($row) {
                 Employee::withoutEvents(fn () => Employee::updateOrCreate(
                     ['employee_id' => (string) $row->employee_id],
-                    ['name' => $row->name ?? $row->employee_id, 'division' => $row->division ?? null, 'position' => $row->position ?? null]
+                    [
+                        'name' => $row->name ?? $row->employee_id,
+                        'division' => (string) ($row->division ?? ''),
+                        'position' => (string) ($row->position ?? ''),
+                        'photo' => $row->photo ?? null,
+                        'status' => ($row->status ?? 'active') === 'inactive' ? 'inactive' : 'active',
+                    ]
                 ));
             });
         }
@@ -160,15 +207,16 @@ class LegacyImporter
                 }
 
                 $inv = ComplianceInventory::withoutEvents(fn () => ComplianceInventory::updateOrCreate(
-                    ['asset_code' => (string) $row->asset_code],   // Q-020: preserved exactly
+                    ['asset_code' => (string) $row->asset_code],
                     [
                         'inventory_category_id' => $categoryId,
                         'asset_item_type_id' => $itemTypeId,
                         'area_id' => $areaId,
                         'type_description' => $row->type_description ?? null,
                         'specific_area' => $row->specific_area ?? null,
+                        'pic' => $row->pic ?? null,
                         'status' => $this->mapStatus((string) ($row->status ?? '')),
-                        'qty' => (int) ($row->qty ?? 1),
+                        'qty' => max(0, (int) ($row->qty ?? 1)),
                         'remark' => $row->remark ?? null,
                         'expired_date' => $this->toDate($row->expired_date ?? null),
                         'photo' => $row->photo ?? null,
@@ -183,25 +231,25 @@ class LegacyImporter
 
     protected function importInventoryPics(): void
     {
-        // Legacy `pic` is a free-text name list → resolve to users, up to 2 equal PICs (Q-007).
         foreach ($this->rows('compliance_inventory_pics', 'compliance_inventory') as $row) {
             $this->write('compliance_inventory_pics', function () use ($row) {
                 $invId = $this->mapped('compliance_inventories', $row->id ?? 0);
-                $inventory = $invId ? ComplianceInventory::find($invId) : ComplianceInventory::where('asset_code', (string) ($row->asset_code ?? ''))->first();
+                $inventory = $invId
+                    ? ComplianceInventory::find($invId)
+                    : ComplianceInventory::where('asset_code', (string) ($row->asset_code ?? ''))->first();
                 if (! $inventory) {
-                    return;
+                    throw new \RuntimeException("inventory#{$row->id}: PIC tidak dapat dipetakan");
                 }
+
                 $names = array_filter(array_map('trim', preg_split('/[-,\n]/', (string) ($row->pic ?? ''))));
                 $userIds = [];
-                foreach (array_slice($names, 0, 2) as $name) {  // max 2, equal (Q-007)
+                foreach (array_slice($names, 0, 2) as $name) {
                     $user = User::where('name', $name)->first();
                     if ($user) {
                         $userIds[] = $user->id;
                     }
                 }
-                if ($userIds !== []) {
-                    $inventory->pics()->syncWithoutDetaching($userIds);
-                }
+                $inventory->pics()->sync(array_values(array_unique($userIds)));
             });
         }
     }
@@ -212,17 +260,22 @@ class LegacyImporter
             $this->write('checklist_master', function () use ($row) {
                 $itemTypeId = $this->mapped('asset_item_types', $row->item_type_id ?? 0);
                 if (! $itemTypeId) {
-                    throw new \RuntimeException('question: item_type tidak ter-resolve');
+                    throw new \RuntimeException("question#{$row->id}: item_type tidak ter-resolve");
                 }
-                $q = ChecklistMaster::withoutEvents(fn () => ChecklistMaster::updateOrCreate(
+
+                $frequency = in_array($row->frequency ?? '', ['daily', 'weekly', 'monthly'], true)
+                    ? $row->frequency
+                    : (AssetItemType::whereKey($itemTypeId)->value('checklist_frequency') ?? 'monthly');
+
+                $question = ChecklistMaster::withoutEvents(fn () => ChecklistMaster::updateOrCreate(
                     ['asset_item_type_id' => $itemTypeId, 'question' => (string) $row->question],
                     [
-                        'frequency' => in_array($row->frequency ?? '', ['daily', 'weekly', 'monthly'], true) ? $row->frequency : null,
+                        'frequency' => $frequency,
                         'require_photo' => (bool) ($row->require_photo ?? false),
                         'active' => (bool) ($row->active ?? true),
                     ]
                 ));
-                $this->mapId('checklist_master', $row->id ?? 0, $q->id);
+                $this->mapId('checklist_master', $row->id ?? 0, $question->id);
             });
         }
     }
@@ -236,41 +289,53 @@ class LegacyImporter
             return;
         }
 
-        // Preload lookup maps (1 query each) — jangan query per baris untuk ~100k log.
-        $usersByName = User::pluck('id', 'name')->all();
+        if (! Schema::hasColumn('checklist_logs', 'legacy_id')) {
+            $this->report['checklist_logs'] = [
+                'read' => 0,
+                'written' => 0,
+                'errors' => ['Kolom checklist_logs.legacy_id belum tersedia. Jalankan php artisan migrate.'],
+            ];
+
+            return;
+        }
+
+        $usersByName = User::query()->get(['id', 'name'])
+            ->mapWithKeys(fn (User $user): array => [strtolower(trim($user->name)) => $user->id])
+            ->all();
         $inventoryTypeById = ComplianceInventory::pluck('asset_item_type_id', 'id')->all();
 
         $rows = [];
         $read = 0;
         $written = 0;
         $errors = [];
-        $cleared = false;
 
         foreach ($legacy->table('checklist_logs')->orderBy('id')->cursor() as $row) {
             $read++;
-
+            $legacyId = (int) ($row->id ?? 0);
             $invId = $this->mapped('compliance_inventories', $row->inventory_id ?? 0);
-            // FIX: legacy FK column is `checklist_template_id` → references checklist_master.id.
             $questionId = $this->mapped('checklist_master', $row->checklist_template_id ?? 0);
-            if (! $invId || ! $questionId) {
-                $errors[] = "log#{$row->id}: inventory/question tidak ter-resolve (inv_id={$row->inventory_id}, template_id={$row->checklist_template_id})";
+            $itemTypeId = $invId ? ($inventoryTypeById[$invId] ?? null) : null;
+
+            if ($legacyId <= 0 || ! $invId || ! $questionId || ! $itemTypeId) {
+                $errors[] = "log#{$legacyId}: inventory/question/item-type tidak ter-resolve (inv_id=".
+                    ($row->inventory_id ?? '').', template_id='.($row->checklist_template_id ?? '').')';
                 continue;
             }
 
-            // Q-006: checked_by (string name) → checked_by_user_id + checked_by_name snapshot.
             $checkerName = trim((string) ($row->checked_by ?? ''));
-            $checkerId = $checkerName !== '' ? ($usersByName[$checkerName] ?? null) : null;
+            $checkerId = $checkerName !== '' ? ($usersByName[strtolower($checkerName)] ?? null) : null;
+            $checkDate = $this->toDate($row->check_date ?? null)
+                ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
 
-            // check_date: nilai legacy, kalau tidak valid → derive dari period_key.
-            $checkDate = $this->toDate($row->check_date ?? null) ?? $this->periodKeyToDate((string) ($row->period_key ?? ''));
             if (! $checkDate) {
-                $errors[] = "log#{$row->id}: check_date tidak valid (period_key={$row->period_key})";
+                $errors[] = "log#{$legacyId}: check_date tidak valid (period_key=".($row->period_key ?? '').')';
                 continue;
             }
 
             $rows[] = [
+                'legacy_id' => $legacyId,
                 'inventory_id' => $invId,
-                'asset_item_type_id' => $inventoryTypeById[$invId] ?? null,
+                'asset_item_type_id' => $itemTypeId,
                 'checklist_master_id' => $questionId,
                 'check_date' => $checkDate,
                 'period_key' => (string) ($row->period_key ?? ''),
@@ -284,43 +349,117 @@ class LegacyImporter
                 'follow_up_status' => $this->mapFollowUpStatus($row->follow_up_status ?? null),
                 'follow_up_note' => $row->follow_up_note ?? null,
                 'follow_up_date' => $this->toDate($row->follow_up_date ?? null),
-                'created_at' => now(),
+                'created_at' => $this->toDateTime($row->created_at ?? null) ?? now(),
                 'updated_at' => now(),
             ];
             $written++;
 
             if (count($rows) >= 1000) {
-                $this->flushChecklistLogs($rows, $cleared);
+                $this->flushChecklistLogs($rows);
                 $rows = [];
             }
         }
 
-        if ($rows !== []) {
-            $this->flushChecklistLogs($rows, $cleared);
-        }
-
+        $this->flushChecklistLogs($rows);
         $this->report['checklist_logs'] = ['read' => $read, 'written' => $written, 'errors' => $errors];
     }
 
-    protected function flushChecklistLogs(array &$rows, bool &$cleared): void
+    /**
+     * Upsert one chunk without deleting target rows. Legacy-id is preferred;
+     * business-key matching adopts rows imported by older importer versions.
+     */
+    protected function flushChecklistLogs(array $rows): void
     {
-        if ($this->dryRun || $rows === []) {
+        if ($rows === []) {
             return;
         }
 
-        if (! $cleared) {
-            // Full-replace untuk tabel turunan ini: hapus sekali, lalu bulk insert per chunk.
-            // Idempoten secara efek (hasil akhir sama tiap run).
-            DB::table('checklist_logs')->delete();
-            $cleared = true;
+        $legacyIds = array_values(array_unique(array_column($rows, 'legacy_id')));
+        $inventoryIds = array_values(array_unique(array_column($rows, 'inventory_id')));
+        $periodKeys = array_values(array_unique(array_column($rows, 'period_key')));
+
+        $existing = DB::table('checklist_logs')
+            ->select(['id', 'legacy_id', 'inventory_id', 'checklist_master_id', 'period_key', 'time_slot'])
+            ->where(function ($query) use ($legacyIds, $inventoryIds, $periodKeys) {
+                $query->whereIn('legacy_id', $legacyIds)
+                    ->orWhere(function ($candidate) use ($inventoryIds, $periodKeys) {
+                        $candidate->whereNull('legacy_id')
+                            ->whereIn('inventory_id', $inventoryIds)
+                            ->whereIn('period_key', $periodKeys);
+                    });
+            })
+            ->orderBy('id')
+            ->get();
+
+        $byLegacyId = [];
+        $byBusinessKey = [];
+        foreach ($existing as $existingRow) {
+            if ($existingRow->legacy_id !== null) {
+                $byLegacyId[(int) $existingRow->legacy_id] = (int) $existingRow->id;
+                continue;
+            }
+
+            $key = $this->checklistLogKey(
+                $existingRow->inventory_id,
+                $existingRow->checklist_master_id,
+                $existingRow->period_key,
+                $existingRow->time_slot
+            );
+            $byBusinessKey[$key][] = (int) $existingRow->id;
         }
 
-        DB::table('checklist_logs')->insert($rows);
+        $updates = [];
+        $inserts = [];
+        foreach ($rows as $row) {
+            $targetId = $byLegacyId[$row['legacy_id']] ?? null;
+            if (! $targetId) {
+                $key = $this->checklistLogKey(
+                    $row['inventory_id'],
+                    $row['checklist_master_id'],
+                    $row['period_key'],
+                    $row['time_slot']
+                );
+                if (! empty($byBusinessKey[$key])) {
+                    $targetId = array_shift($byBusinessKey[$key]);
+                }
+            }
+
+            if ($targetId) {
+                $updates[] = ['id' => $targetId] + $row;
+            } else {
+                $inserts[] = $row;
+            }
+        }
+
+        $updateColumns = [
+            'legacy_id', 'inventory_id', 'asset_item_type_id', 'checklist_master_id',
+            'check_date', 'period_key', 'time_slot', 'status', 'remark', 'photo',
+            'checked_by_user_id', 'checked_by_name', 'mode', 'follow_up_status',
+            'follow_up_note', 'follow_up_date', 'created_at', 'updated_at',
+        ];
+
+        if ($updates !== []) {
+            DB::table('checklist_logs')->upsert($updates, ['id'], $updateColumns);
+        }
+        if ($inserts !== []) {
+            DB::table('checklist_logs')->upsert($inserts, ['legacy_id'], $updateColumns);
+        }
+    }
+
+    protected function checklistLogKey($inventoryId, $questionId, $periodKey, $timeSlot): string
+    {
+        return implode("\x1F", [
+            (string) $inventoryId,
+            (string) $questionId,
+            (string) $periodKey,
+            $timeSlot === null ? '<NULL>' : (string) $timeSlot,
+        ]);
     }
 
     protected function mapRole(string $role): string
     {
         $role = strtolower(trim($role));
+
         return in_array($role, ['admin', 'compliance', 'security', 'staff', 'auditor', 'office'], true) ? $role : 'staff';
     }
 
@@ -333,11 +472,11 @@ class LegacyImporter
         };
     }
 
-    /** BR-11/Q-001: normalisasi status checklist legacy → ok|not_ok|na. 'ng' → not_ok; ''/tak dikenal → ok. */
     protected function mapChecklistStatus($status): string
     {
-        $s = strtolower(trim((string) ($status ?? '')));
-        return match ($s) {
+        $status = strtolower(trim((string) ($status ?? '')));
+
+        return match ($status) {
             'not_ok', 'not ok', 'not-ok', 'ng' => 'not_ok',
             'na', 'n/a' => 'na',
             default => 'ok',
@@ -346,45 +485,59 @@ class LegacyImporter
 
     protected function mapFollowUpStatus($status): ?string
     {
-        $s = strtolower(trim((string) ($status ?? '')));
-        return in_array($s, ['open', 'monitoring', 'closed'], true) ? $s : null;
+        $status = strtolower(trim((string) ($status ?? '')));
+
+        return in_array($status, ['open', 'monitoring', 'closed'], true) ? $status : null;
     }
 
-    /** Terima Y-m-d / Y-m-d H:i:s; tolak zero-date ('0000-00-00')/invalid → null. */
     protected function toDate($value): ?string
     {
-        $v = trim((string) ($value ?? ''));
-        if ($v === '' || str_starts_with($v, '0000')) {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '' || str_starts_with($value, '0000')) {
             return null;
         }
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
-            return "{$m[1]}-{$m[2]}-{$m[3]}";
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $value, $matches)
+            && checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])) {
+            return "{$matches[1]}-{$matches[2]}-{$matches[3]}";
         }
+
         return null;
     }
 
-    /** period_key → tanggal valid: daily Y-m-d apa adanya; monthly Y-m → -01; weekly Y-m-Wn → -01 (seperti legacy). */
+    protected function toDateTime($value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '' || str_starts_with($value, '0000')) {
+            return null;
+        }
+        $timestamp = strtotime($value);
+
+        return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
+    }
+
     protected function periodKeyToDate(string $periodKey): ?string
     {
-        $pk = preg_replace('/-W[1-4]$/', '', trim($periodKey)); // buang suffix -Wn
-        if ($d = $this->toDate($pk)) {
-            return $d;                          // daily Y-m-d
+        $periodKey = preg_replace('/-W[1-4]$/', '', trim($periodKey));
+        if ($date = $this->toDate($periodKey)) {
+            return $date;
         }
-        if (preg_match('/^\d{4}-\d{2}$/', $pk)) {
-            return $pk.'-01';                   // monthly / weekly-stripped Y-m → -01
+        if (preg_match('/^\d{4}-\d{2}$/', $periodKey)) {
+            return $periodKey.'-01';
         }
+
         return null;
     }
 
-    /** page_access legacy (text JSON) → string JSON valid untuk kolom json; invalid/kosong → null. */
     protected function toJsonOrNull($value): ?string
     {
-        $v = trim((string) ($value ?? ''));
-        if ($v === '') {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '') {
             return null;
         }
-        json_decode($v);
-        return json_last_error() === JSON_ERROR_NONE ? $v : null;
+
+        $decoded = json_decode($value, true);
+
+        return json_last_error() === JSON_ERROR_NONE && is_array($decoded) ? $value : null;
     }
 
     protected function rows(string $reportKey, string $legacyTable): iterable
@@ -398,15 +551,15 @@ class LegacyImporter
         return DB::connection('legacy')->table($legacyTable)->orderBy('id')->cursor();
     }
 
-    protected function write(string $reportKey, callable $fn): void
+    protected function write(string $reportKey, callable $callback): void
     {
         $this->report[$reportKey] ??= ['read' => 0, 'written' => 0, 'errors' => []];
         $this->report[$reportKey]['read']++;
 
         try {
-            if (! $this->dryRun) {
-                $fn();
-            }
+            // Dry-runs execute the exact write path inside a transaction which is
+            // rolled back by run(); this also builds and validates every ID map.
+            $callback();
             $this->report[$reportKey]['written']++;
         } catch (\Throwable $e) {
             $this->report[$reportKey]['errors'][] = $e->getMessage();
@@ -415,7 +568,9 @@ class LegacyImporter
 
     protected function mapId(string $table, $legacyId, $newId): void
     {
-        $this->map[$table][$legacyId] = $newId;
+        if ($legacyId !== null && $newId !== null) {
+            $this->map[$table][$legacyId] = (int) $newId;
+        }
     }
 
     protected function mapped(string $table, $legacyId): ?int

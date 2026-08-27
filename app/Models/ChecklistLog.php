@@ -14,7 +14,7 @@ class ChecklistLog extends Model
     public const STATUSES = [self::STATUS_OK, self::STATUS_NOT_OK, self::STATUS_NA];
 
     protected $fillable = [
-        'inventory_id', 'asset_item_type_id', 'checklist_master_id',
+        'legacy_id', 'inventory_id', 'asset_item_type_id', 'checklist_master_id',
         'check_date', 'period_key', 'time_slot', 'status', 'remark', 'photo',
         'checked_by_user_id', 'checked_by_name', 'mode',
         'follow_up_status', 'follow_up_note', 'follow_up_date',
