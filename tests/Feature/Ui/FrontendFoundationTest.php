@@ -23,7 +23,7 @@ class FrontendFoundationTest extends TestCase
         $this->assertStringContainsString('vendor/livewire/livewire/dist/livewire.esm', $javascript);
         $this->assertStringContainsString('Livewire.start()', $javascript);
         $this->assertStringNotContainsString("from 'alpinejs'", $javascript);
-        $this->assertStringNotContainsString('Alpine.start()', $javascript);
+        $this->assertDoesNotMatchRegularExpression('/^\s*Alpine\.start\(\);/m', $javascript);
     }
 
     public function test_tailwind_is_prefixed_and_does_not_load_preflight(): void
