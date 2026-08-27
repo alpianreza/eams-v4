@@ -8,44 +8,49 @@
     <script>
         (function () {
             try {
-                var k = 'eams-theme';
-                var t = localStorage.getItem(k) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-                document.documentElement.setAttribute('data-bs-theme', t);
-            } catch (e) {}
+                var key = 'eams-theme';
+                var theme = localStorage.getItem(key) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-bs-theme', theme);
+            } catch (error) {}
         })();
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('assets/css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/page-header.css') }}">
     @stack('styles')
 </head>
-<body>
+<body x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false">
     @auth
     @php($unreadNotifications = \App\Models\Notification::where('user_id', auth()->id())->whereNull('read_at')->count())
-    <nav class="sidebar">
+    <nav class="sidebar" :class="{ 'is-open': sidebarOpen }" aria-label="Navigasi utama">
         <div class="brand"><i class="bi bi-shield-check"></i> {{ config('eams.company_name', 'EAMS') }}</div>
         @foreach(\App\Support\Menu::for(auth()->user()) as $group)
             <div class="group">{{ $group['group'] }}</div>
             @foreach($group['items'] as $item)
                 @php($url = route($item['route'], $item['params'] ?? []))
-                <a href="{{ $url }}" class="{{ request()->url() === $url ? 'active' : '' }}"><i class="bi bi-{{ $item['icon'] }}"></i> {{ $item['label'] }}</a>
+                <a href="{{ $url }}" @click="sidebarOpen = false" class="{{ request()->url() === $url ? 'active' : '' }}"><i class="bi bi-{{ $item['icon'] }}"></i> {{ $item['label'] }}</a>
             @endforeach
         @endforeach
     </nav>
 
+    <div class="sidebar-backdrop" x-cloak x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" aria-hidden="true"></div>
+
     <div class="main">
         <div class="topbar">
-            <div class="topbar-title">@yield('title', 'Beranda')</div>
-            <div class="d-flex align-items-center gap-3">
-                <button type="button" class="theme-toggle" onclick="window.__eams.toggleTheme()" title="Ganti tema" aria-label="Ganti tema">
-                    <i class="bi bi-moon-stars" data-theme-icon></i>
+            <div class="d-flex align-items-center gap-2 min-w-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary mobile-menu-toggle" @click="sidebarOpen = true" aria-label="Buka menu">
+                    <i class="bi bi-list"></i>
                 </button>
+                <div class="topbar-title">@yield('title', 'Beranda')</div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div x-data="themeSwitcher">
+                    <button type="button" class="theme-toggle" @click="toggle" title="Ganti tema" aria-label="Ganti tema">
+                        <i class="bi" :class="theme === 'dark' ? 'bi-sun' : 'bi-moon-stars'"></i>
+                    </button>
+                </div>
                 <a href="{{ route('notifications.index') }}" class="text-body-secondary position-relative text-decoration-none" title="Notifikasi">
                     <i class="bi bi-bell"></i>
                     @if($unreadNotifications > 0)
@@ -73,25 +78,6 @@
         @yield('content')
     @endauth
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
-    <script>
-        window.__eams = window.__eams || {};
-        (function () {
-            var KEY = 'eams-theme';
-            function apply(t) {
-                document.documentElement.setAttribute('data-bs-theme', t);
-                document.querySelectorAll('[data-theme-icon]').forEach(function (i) {
-                    i.className = 'bi ' + (t === 'dark' ? 'bi-sun' : 'bi-moon-stars');
-                });
-            }
-            window.__eams.toggleTheme = function () {
-                var cur = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-                apply(cur);
-                try { localStorage.setItem(KEY, cur); } catch (e) {}
-            };
-            apply(document.documentElement.getAttribute('data-bs-theme') || 'light');
-        })();
-    </script>
 </body>
 </html>

@@ -41,6 +41,8 @@
 .sidebar a.active { background: var(--c-primary); color: var(--c-primary-contrast); font-weight: 600; }
 .sidebar a i { width: 1.15rem; text-align: center; }
 
+.sidebar-backdrop { display: none; }
+.mobile-menu-toggle { display: none; }
 .main { margin-left: var(--layout-sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
 
 .topbar {
@@ -59,6 +61,27 @@
 .card-header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
 
 @media (max-width: 768px) {
-  .sidebar { width: 0; overflow: hidden; border-right: none; }
+  .sidebar {
+    width: min(var(--layout-sidebar-w), 86vw);
+    transform: translateX(-105%);
+    transition: transform var(--transition-base);
+    border-right: 1px solid var(--c-sidebar-border);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: block;
+    background: var(--c-overlay);
+  }
+  .mobile-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .main { margin-left: 0; }
+  .topbar { padding: 0 var(--s-3); }
+  .topbar-title { max-width: 45vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .content { padding: var(--s-3); }
 }
