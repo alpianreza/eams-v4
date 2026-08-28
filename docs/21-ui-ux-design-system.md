@@ -1,6 +1,6 @@
 # 21 — EAMS UI/UX Design System
 
-> **Status:** Phase 2B aktif. Milestone A (foundation + application shell + reusable primitives) telah diimplementasikan dan lulus browser gate 4/4; Dashboard menjadi milestone aktif berikutnya.
+> **Status:** Phase 2B aktif. Milestone A dan migrasi Dashboard telah diimplementasikan serta lulus browser gate Chromium 5/5; Inventory menjadi milestone berikutnya.
 > **Sumber aturan:** `docs/17-business-specification.md`, `docs/19-decision-log.md`, dan `docs/20-laravel-architecture.md`.
 > **Prinsip utama:** **USABILITY > DECORATION** — compact, information-dense, cepat, aksesibel, dan konsisten untuk operasi harian.
 
@@ -119,6 +119,17 @@ Gunakan Alpine untuk state UI lokal: drawer, dropdown, modal visibility, theme, 
 
 Komponen Livewire harus kecil berdasarkan tanggung jawab. Business rule tetap berada pada Action/Service/domain support yang sudah ada, bukan dipindah ke view.
 
+### Dashboard pattern yang telah diterapkan
+
+- `DashboardController` tetap menghitung snapshot KPI dengan canonical period engine existing.
+- `App\Livewire\Dashboard\Overview` menerima property snapshot terkunci; tidak query dan tidak menghitung ulang KPI.
+- View menggunakan `x-ui.card`, `x-ui.status-indicator`, `x-ui.button`, `x-ui.alert`, dan `x-ui.empty-state`.
+- Seluruh utility baru memakai prefix `eams:`; view Dashboard tidak memakai hook/class Bootstrap.
+- Alpine hanya mengelola disclosure penjelasan status lokal.
+- Empat link GET internal memakai `wire:navigate`.
+
+Pattern ini menjadi acuan presentation boundary, bukan alasan memindahkan business rule ke Livewire.
+
 ## 8. Accessibility dan responsive behavior
 
 - Landmark, label, `aria-current`, `aria-expanded`, dan dialog role wajib benar.
@@ -128,7 +139,7 @@ Komponen Livewire harus kecil berdasarkan tanggung jawab. Business rule tetap be
 - Target sentuh minimum sekitar 36–44 px sesuai kepadatan konteks.
 - Tabel lebar memakai horizontal overflow; kolom penting/sticky digunakan bila membantu operasi.
 - Hormati `prefers-reduced-motion`.
-- Tidak boleh ada horizontal overflow pada viewport 390 px.
+- Tidak boleh ada horizontal overflow pada viewport 390 px setelah transisi responsif selesai.
 
 ## 9. Migration status
 
@@ -139,28 +150,30 @@ Komponen Livewire harus kecil berdasarkan tanggung jawab. Business rule tetap be
 | Tokens/theme | Implemented | Light/dark/system + enam aksen |
 | Application shell | Implemented | Sidebar, topbar, breadcrumb, navigation |
 | Component primitives | Implemented | Catalog Milestone A tersedia |
-| Browser QA automation | Implemented | Chromium 4/4; console/hydration bersih |
+| Browser QA automation | Implemented | Chromium 5/5; console/hydration bersih |
 | Bootstrap legacy | Remaining, guarded | Modal regression lulus; dipertahankan untuk halaman legacy |
-| Dashboard | Active | Migrasi pertama setelah Milestone A hijau |
-| Inventory | Pending | Setelah Dashboard |
+| Dashboard | Implemented | Livewire presentation boundary + Tailwind + Alpine + `wire:navigate` |
+| Inventory | Next | Milestone aktif berikutnya |
 | Checklist standard/grid | Pending | Setelah Inventory |
 | Modul lain | Pending | Bertahap |
 | Bootstrap removal | Last | Hanya setelah replacement lengkap |
 
 ## 10. Browser QA gate
 
-Gate Milestone A pada commit `0f401c61` telah lulus:
+Gate Dashboard pada commit `4bdea862` telah lulus:
 
 - desktop shell, sidebar collapse persistence, `wire:navigate`, back/forward;
-- mobile drawer/backdrop, Escape, theme persistence, dan viewport 390 px tanpa page-level overflow;
+- Dashboard ter-hydrate sebagai Livewire component setelah navigasi;
+- empat KPI dan empat quick link tampil, serta Alpine disclosure berfungsi;
+- mobile drawer/backdrop, Escape, theme persistence, dan viewport 390 px tanpa page-level overflow setelah transisi responsif stabil;
 - dropdown, modal, drawer, confirm dialog, file upload, image preview fallback, serta toast;
 - console error, Alpine expression error, page error, dan Livewire hydration error kosong;
-- satu modal Bootstrap legacy di `/users` terbukti open, memiliki Bootstrap instance, close, dan memancarkan `hidden.bs.modal`;
-- `php artisan test`: **192 passed / 601 assertions / exit 0**;
+- modal Bootstrap legacy di `/users` terbukti open, memiliki Bootstrap instance, close, dan memancarkan `hidden.bs.modal`;
+- `php artisan test`: **194 passed / 634 assertions / exit 0**;
 - `npm run build`: **exit 0**;
-- Playwright Chromium: **4 passed / exit 0**.
+- Playwright Chromium: **5 passed / exit 0**.
 
-Browser assertion tetap fail-fast pada setiap checkpoint interaksi; error tidak di-whitelist atau diabaikan.
+Assertion tetap fail-fast dan error tidak di-whitelist. Pemeriksaan overflow melakukan polling terbatas agar tidak membaca margin shell di tengah transisi desktop-ke-mobile; overflow yang menetap tetap menggagalkan test.
 
 ## 11. Known issues / batas saat ini
 

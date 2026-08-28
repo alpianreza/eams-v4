@@ -219,9 +219,9 @@ Komponen presentasi tidak boleh menghitung status domain.
 - Jangan memanggil `Alpine.start()`; Alpine berasal dari Livewire.
 - Hindari duplikasi state Livewire–Alpine tanpa kebutuhan.
 
-## 25. Dashboard architecture
+## 25. Dashboard architecture — implemented
 
-Dashboard mengambil KPI dari aturan backend yang sudah ada:
+Dashboard mempertahankan data dan aturan backend existing untuk:
 
 - inventory aktif
 - checklist `OPEN`
@@ -229,7 +229,9 @@ Dashboard mengambil KPI dari aturan backend yang sudah ada:
 - expiry
 - kondisi `GOOD`, `NEED_REPAIR`, `NOT_ACTIVE`
 
-Canonical period engine tetap menjadi sumber status. Migrasi UI boleh menambah tampilan actionable, refresh, loading, empty state, dan link ke modul terkait, tetapi tidak boleh menciptakan formula KPI baru atau mengubah definisi existing. Controller tetap menghitung KPI; Livewire digunakan sebagai boundary presentasi kecil dan bukan sebagai salinan business rule.
+Canonical period engine tetap menjadi sumber status. `DashboardController` tetap melakukan query dan menghitung seluruh KPI; route, authorization, model, dan business rule tidak diubah.
+
+`App\Livewire\Dashboard\Overview` hanya menjadi boundary presentasi kecil: menerima snapshot controller sebagai property terkunci, menormalisasi shape input, tidak menjalankan query, dan tidak menghitung ulang KPI. View `livewire.dashboard.overview` menggunakan Tailwind ber-prefix `eams:`, komponen design system, Alpine hanya untuk disclosure lokal, serta `wire:navigate` pada link GET internal. Loading/empty/actionable states tetap presentation-only.
 
 ## 26. Testing strategy
 
@@ -245,19 +247,21 @@ Test bisnis utama meliputi period engine, status/evidence, PIC, QR, device thres
 
 ## 27. Browser QA
 
-Browser QA otomatis memakai Playwright 1.55.0 dan Chromium. Gate Milestone A pada commit `0f401c61` lulus dengan:
+Browser QA otomatis memakai Playwright 1.55.0 dan Chromium. Gate Dashboard pada commit `4bdea862` lulus dengan:
 
-- empat dari empat skenario browser lulus;
+- lima dari lima skenario browser lulus;
 - desktop shell, collapse persistence, `wire:navigate`, dan back/forward;
-- mobile drawer, Escape, theme persistence, dan viewport 390 px tanpa page-level horizontal overflow;
+- Dashboard ter-hydrate sebagai Livewire component setelah `wire:navigate`;
+- empat KPI, empat quick link, dan Alpine disclosure Dashboard berfungsi;
+- mobile drawer, Escape, theme persistence, dan viewport 390 px tanpa page-level horizontal overflow setelah transisi responsif stabil;
 - dropdown, modal, drawer, confirm dialog, file upload, image preview, dan toast;
 - tidak ada console error, Alpine expression error, page error, atau hydration error;
 - modal Bootstrap legacy `/users#roleModal` tetap dapat dibuka, memiliki instance Bootstrap, lalu ditutup sampai event `hidden.bs.modal`;
-- `php artisan test`: 192 test / 601 assertion / exit 0;
+- `php artisan test`: 194 test / 634 assertion / exit 0;
 - `npm run build`: exit 0;
-- browser QA: 4 passed / exit 0.
+- browser QA: 5 passed / exit 0.
 
-Smoke test manual tetap diperlukan sebelum deployment produksi.
+Pemeriksaan overflow memakai polling terbatas hingga layout selesai bertransisi; overflow yang menetap tetap menggagalkan gate. Smoke test manual tetap diperlukan sebelum deployment produksi.
 
 ## 28. Phase 2B migration status
 
@@ -267,9 +271,9 @@ Smoke test manual tetap diperlukan sebelum deployment produksi.
 | Tokens/theme | Implemented |
 | Application shell | Implemented |
 | Reusable components | Implemented |
-| Browser QA automation | Implemented — Milestone A 4/4 passed |
-| Dashboard | Active milestone |
-| Inventory | Pending after Dashboard |
+| Browser QA automation | Implemented — Dashboard gate 5/5 passed |
+| Dashboard | Implemented |
+| Inventory | Next milestone |
 | Checklist STANDARD/GRID | Pending |
 | Other modules | Pending |
 | Bootstrap removal | Last |
