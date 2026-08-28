@@ -31,6 +31,7 @@
         })();
     </script>
 
+    @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="auth-page">
@@ -120,5 +121,7 @@
         </div>
     </main>
 </div>
+
+@livewireScriptConfig
 </body>
 </html>

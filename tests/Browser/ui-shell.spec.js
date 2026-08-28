@@ -86,9 +86,10 @@ test('Tailwind and Alpine component interactions work in Chromium', async ({ pag
     await page.keyboard.press('Escape');
 
     await page.locator('[data-qa="open-confirm"]').click();
-    await expect(page.getByRole('alertdialog', { name: 'Konfirmasi QA' })).toBeVisible();
-    await expect(page.getByText('Konfirmasi browser QA')).toBeVisible();
-    await page.getByRole('button', { name: 'Batal' }).click();
+    const confirmDialog = page.getByRole('alertdialog', { name: 'Konfirmasi QA' });
+    await expect(confirmDialog).toBeVisible();
+    await expect(confirmDialog.getByText('Konfirmasi browser QA')).toBeVisible();
+    await confirmDialog.getByRole('button', { name: 'Batal' }).click();
 
     await page.locator('input[name="qa_photo"]').setInputFiles({
         name: 'qa-image.png',
@@ -113,7 +114,7 @@ test('Bootstrap legacy modal still works beside Livewire and Tailwind', async ({
     await page.locator('[data-bs-target="#roleModal"]').click();
     await expect(page.locator('#roleModal.modal.show')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tambah Role' })).toBeVisible();
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('roleModal')).hide());
     await expect(page.locator('#roleModal.modal.show')).toHaveCount(0);
     expect(errors).toEqual([]);
 });

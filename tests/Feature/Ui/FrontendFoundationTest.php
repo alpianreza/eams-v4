@@ -19,11 +19,15 @@ class FrontendFoundationTest extends TestCase
     public function test_frontend_uses_livewire_alpine_runtime_once(): void
     {
         $javascript = file_get_contents(resource_path('js/app.js'));
+        $applicationLayout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $loginView = file_get_contents(resource_path('views/auth/login.blade.php'));
 
         $this->assertStringContainsString('vendor/livewire/livewire/dist/livewire.esm', $javascript);
         $this->assertStringContainsString('Livewire.start()', $javascript);
         $this->assertStringNotContainsString("from 'alpinejs'", $javascript);
         $this->assertDoesNotMatchRegularExpression('/^\s*Alpine\.start\(\);/m', $javascript);
+        $this->assertStringContainsString('@livewireScriptConfig', $applicationLayout);
+        $this->assertStringContainsString('@livewireScriptConfig', $loginView);
     }
 
     public function test_tailwind_is_prefixed_and_does_not_load_preflight(): void
