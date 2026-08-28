@@ -196,7 +196,7 @@ Reusable Blade components berada di `resources/views/components/ui/`:
 
 Button, Input, Textarea, Select, Checkbox, Radio, Switch, Badge, Card, Table, Modal, Drawer, Toast, Alert, Dropdown, Tabs, Pagination, Skeleton, Empty State, Confirm Dialog, File Upload, Image Preview, dan Status Indicator.
 
-Detail token, states, accessibility, migration matrix, dan QA gate ada di `docs/21-ui-ux-design-system.md`.
+Detail token, states, accessibility, migration matrix, dan QA gate ada di `docs/21-ui-ux-design-system.md`. Blueprint per-halaman (BP.0–BP.28) berada di dokumen yang sama; sitemap dan pola navigasi ada di `docs/22-ui-ux-page-map.md`.
 
 Nilai Blade dinamis yang dipakai oleh ekspresi Alpine pada atribut forwarded harus dikompilasi pada root component (misalnya ke state `x-data`) sebelum atribut diteruskan; literal directive Blade tidak boleh sampai ke browser.
 
@@ -233,6 +233,15 @@ Canonical period engine tetap menjadi sumber status. `DashboardController` tetap
 
 `App\Livewire\Dashboard\Overview` hanya menjadi boundary presentasi kecil: menerima snapshot controller sebagai property terkunci, menormalisasi shape input, tidak menjalankan query, dan tidak menghitung ulang KPI. View `livewire.dashboard.overview` menggunakan Tailwind ber-prefix `eams:`, komponen design system, Alpine hanya untuk disclosure lokal, serta `wire:navigate` pada link GET internal. Loading/empty/actionable states tetap presentation-only.
 
+## 25A. Inventory architecture — active migration
+
+Migrasi Inventory ke Livewire + Tailwind ter-commit di `eb44a20e`:
+
+- `App\Livewire\Compliance\InventoryIndex` memiliki filter (`q`, `area`, `status` sebagai `#[Url]`) dan pagination 20/halaman dengan view pagination `eams` kustom; query mirror 1:1 dari controller index sebelumnya.
+- View `compliance/inventory` (index via component, create, edit, show) memakai Tailwind prefix `eams:` + komponen `x-ui`; delete memakai confirm dialog `eams`.
+- Business rule tidak diubah: BR-19 (asset_code generate/preserve), BR-45 (identitas terkunci saat edit), Q-007 (PIC maks 2), Q-017 (status kanonik via StatusPresentation), Q-018 (expiry display-only), Q-021 (QR legacy URL), Q-022 (storage disks).
+- Status: **belum ditutup** — dua skenario browser QA Inventory masih merah (lihat §27/§29).
+
 ## 26. Testing strategy
 
 Gate minimum:
@@ -263,6 +272,8 @@ Browser QA otomatis memakai Playwright 1.55.0 dan Chromium. Gate Dashboard pada 
 
 Pemeriksaan overflow memakai polling terbatas hingga layout selesai bertransisi; overflow yang menetap tetap menggagalkan gate. Smoke test manual tetap diperlukan sebelum deployment produksi.
 
+Status terkini (commit `52624fa0`, run `#33159492849`): `php artisan test` **199 passed / 656 assertions / exit 0** dan `npm run build` **exit 0**, tetapi Playwright Chromium **5 passed / 2 failed / exit 1**. Kedua kegagalan pada skenario Inventory baru: marker `[data-eams-component="table"]` tidak terlihat pada halaman index, dan `select[name="pic_ids"]` tidak terlihat pada form create. Milestone Inventory tidak boleh ditutup sebelum kedua skenario ini hijau.
+
 ## 28. Phase 2B migration status
 
 | Area | Status |
@@ -271,10 +282,11 @@ Pemeriksaan overflow memakai polling terbatas hingga layout selesai bertransisi;
 | Tokens/theme | Implemented |
 | Application shell | Implemented |
 | Reusable components | Implemented |
-| Browser QA automation | Implemented — Dashboard gate 5/5 passed |
+| Browser QA automation | Implemented — gate Dashboard 5/5; run terkini 5/7 (2 skenario Inventory merah) |
 | Dashboard | Implemented |
-| Inventory | Next milestone |
-| Checklist STANDARD/GRID | Pending |
+| Page-by-page blueprint + page map | Implemented — docs/21 BP.0–BP.28 + docs/22 (`a65d104c`) |
+| Inventory | Active — migrasi Livewire/Tailwind ter-commit (`eb44a20e`); menunggu 2 skenario browser QA hijau |
+| Checklist STANDARD/GRID | Pending — berikutnya sesuai urutan BP.28 |
 | Other modules | Pending |
 | Bootstrap removal | Last |
 
@@ -283,6 +295,7 @@ Pemeriksaan overflow memakai polling terbatas hingga layout selesai bertransisi;
 - Halaman legacy masih memakai Bootstrap dan dimigrasikan per modul.
 - Browser-specific print/camera/QR behavior harus dipertahankan sampai pengganti teruji.
 - Hardening upload Inventory agar invalid file ditolak sebelum mutasi DB masih merupakan pekerjaan terpisah.
+- Browser QA Inventory merah pada run `#33159492849` (`[data-eams-component="table"]` di index; `select[name="pic_ids"]` di form create) — perbaikan dua skenario ini adalah langkah berikutnya sebelum milestone Inventory ditutup.
 - Validasi data produksi tetap membutuhkan dry-run/import/reconciliation terhadap database XAMPP pengguna.
 
 ## 30. Traceability dan definition of done
