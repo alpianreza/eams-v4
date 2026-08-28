@@ -1,0 +1,78 @@
+name: Finalize Milestone A Metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/finalize-milestone-a.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lock Playwright and update architecture status
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --save-dev --save-exact @playwright/test --no-audit --no-fund
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/20-laravel-architecture.md')
+          text = path.read_text()
+          text = text.replace(
+              '> **Status:** DRAFT DESIGN — **belum ada implementasi**. Dokumen ini adalah rancangan arsitektur, bukan kode. Tidak ada Laravel project/controller/model/migration/Blade/API/service yang dibuat pada fase ini.\n> **Dasar desain (wajib diikuti):** Business Specification (`docs/17`) + Human Decisions (`docs/19`) + Production DB Evidence (`docs/18`, `docs/03`).\n> **Prinsip pengikat:** ini **bukan** "terjemahkan CI4 controller → Laravel controller satu per satu". Ini arsitektur Laravel yang clean dengan **business behavior tetap kompatibel**.\n> **Review gate:** dokumen ini menunggu persetujuan Project Owner **sebelum** implementasi Laravel boleh dimulai.',
+              '> **Status:** IMPLEMENTED — Laravel 12 modular monolith aktif dan dimigrasikan bertahap dari CI4 dengan business behavior tetap kompatibel.\n> **Runtime:** PHP `^8.2`, MySQL 8, Blade, Livewire 4, Tailwind CSS 4, Alpine.js, dan Vite.\n> **Dasar mengikat:** Business Specification (`docs/17`) + Human Decisions (`docs/19`) + Production DB Evidence (`docs/18`, `docs/03`).\n> **Batas:** jangan mengubah business rule, kontrak API/storage/QR, atau backend yang sudah teruji hanya untuk kebutuhan frontend.'
+          )
+          start = text.index('## 2. Laravel Version')
+          end = text.index('## 3. PHP Version')
+          text = text[:start] + '''## 2. Laravel Version
+
+- **Implemented:** Laravel **12.x**, dikunci di `composer.lock` dan kompatibel dengan PHP `^8.2`.
+- Livewire **4.x** digunakan untuk komponen stateful dan navigasi SPA-like tanpa mengganti aplikasi menjadi SPA penuh.
+- Versi dependency aktual harus berasal dari Composer/npm lockfile, bukan ditulis manual.
+
+''' + text[end:]
+          start = text.index('## 23. Frontend Architecture')
+          end = text.index('## 24. API/AJAX Architecture')
+          text = text[:start] + '''## 23. Frontend Architecture
+
+- **Target final:** Blade + Livewire 4 + Tailwind CSS 4 + Alpine.js + Vite.
+- `wire:navigate` digunakan pada link GET internal yang aman; file, download, export, PDF, dan form submit mempertahankan behavior yang sesuai.
+- Alpine berasal dari bundle Livewire agar hanya ada satu runtime. JavaScript biasa tetap digunakan untuk camera, QR scanner, MediaDevices, canvas, chart, dan file preview.
+- Tailwind memakai prefix `eams:` tanpa Preflight selama coexistence. Bootstrap 5 tetap dibundel untuk halaman legacy dan baru dihapus setelah replacement lengkap serta regression QA hijau.
+- Application shell mencakup topbar, sidebar fixed/collapsible, drawer mobile, breadcrumb, notifications, user menu, theme, toast, dan navigation loading state.
+- Reusable primitives berada di `resources/views/components/ui`; semantic status dipusatkan di `App\\Support\\Ui\\StatusPresentation`.
+- Detail token, component catalog, migration status, QA gate, dan known issues ada di `docs/21-ui-ux-design-system.md`.
+
+''' + text[end:]
+          marker = '\n---\n\n## Traceability\n'
+          if '## Phase 2B — Frontend Migration Status' not in text:
+              addition = '''
+---
+
+## Phase 2B — Frontend Migration Status
+
+- **Milestone A implemented:** Livewire 4, Tailwind 4, Vite, design tokens, application shell, sidebar, topbar, breadcrumb, `wire:navigate`, dan reusable components.
+- **Migration strategy:** bertahap; Bootstrap legacy tetap aktif dan dilindungi regression test.
+- **Completed components:** Button, Input, Textarea, Select, Checkbox, Radio, Switch, Badge, Card, Table, Modal, Drawer, Toast, Alert, Dropdown, Tabs, Breadcrumb, Pagination, Skeleton, Empty State, Confirm Dialog, File Upload, Image Preview, Status Indicator.
+- **Remaining Bootstrap:** halaman Dashboard/Inventory/Checklist/modul sekunder yang belum dimigrasikan per milestone.
+- **Known issues:** browser QA harus hijau; hardening validasi upload Inventory masih pending; business-specific browser API tidak boleh direwrite sembarangan.
+- **Next milestone:** Dashboard, tanpa mengubah KPI calculation dan canonical period engine.
+'''
+              text = text.replace(marker, addition + marker)
+          text = text.replace('> **Status:** DRAFT — menunggu **Architecture Review** oleh Project Owner. Implementasi Laravel **belum** boleh dimulai.\n> **Rantai:** Legacy → Audit → Production Verification → Human Decision → Business Specification → **Architecture Design (dokumen ini)** → Architecture Review → Implementation.', '> **Status:** IMPLEMENTED dan terus dimigrasikan bertahap. Perubahan frontend tetap tunduk pada business specification dan human decisions.\n> **Rantai:** Legacy → Audit → Production Verification → Human Decision → Business Specification → Architecture → Implementation → Automated QA → Deployment.')
+          path.write_text(text)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json docs/20-laravel-architecture.md
+          git commit -m 'build(qa): lock Playwright and refresh architecture status'
+          git push origin HEAD:main
