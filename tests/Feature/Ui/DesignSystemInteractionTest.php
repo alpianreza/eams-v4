@@ -23,8 +23,10 @@ class DesignSystemInteractionTest extends TestCase
         }
 
         $this->assertStringNotContainsString('data-bs-toggle', $html);
+        $this->assertStringNotContainsString('@js(', $html);
         $this->assertStringContainsString('open-modal.window', $html);
         $this->assertStringContainsString('eams-confirmed', $html);
+        $this->assertStringContainsString('name: dialogName', $html);
     }
 
     public function test_milestone_a_component_catalog_is_present(): void

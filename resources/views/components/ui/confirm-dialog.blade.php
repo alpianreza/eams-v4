@@ -1,7 +1,7 @@
 @props(['name' => 'global-confirm', 'title' => 'Konfirmasi', 'confirmLabel' => 'Lanjutkan', 'cancelLabel' => 'Batal'])
 
-<div x-data="{ open: false, message: '', requestId: null }"
-     @eams-confirm.window="if (!$event.detail?.name || $event.detail.name === @js($name)) { message = $event.detail?.message || 'Apakah Anda yakin?'; requestId = $event.detail?.id || null; open = true }"
+<div x-data="{ open: false, message: '', requestId: null, dialogName: @js($name) }"
+     @eams-confirm.window="if (!$event.detail?.name || $event.detail.name === dialogName) { message = $event.detail?.message || 'Apakah Anda yakin?'; requestId = $event.detail?.id || null; open = true }"
      @keydown.escape.window="open = false" x-cloak x-show="open"
      class="eams:fixed eams:inset-0 eams:z-[160] eams:flex eams:items-center eams:justify-center eams:p-4"
      role="alertdialog" aria-modal="true" aria-labelledby="{{ $name }}-title" data-eams-component="confirm-dialog">
@@ -12,7 +12,7 @@
         <p class="eams:mb-0 eams:mt-2 eams:text-[13px] eams:leading-5 eams:text-muted" x-text="message"></p>
         <div class="eams:mt-5 eams:flex eams:justify-end eams:gap-2">
             <x-ui.button variant="secondary" @click="open = false">{{ $cancelLabel }}</x-ui.button>
-            <x-ui.button variant="danger" @click="open = false; $dispatch('eams-confirmed', { name: @js($name), id: requestId })">{{ $confirmLabel }}</x-ui.button>
+            <x-ui.button variant="danger" @click="open = false; $dispatch('eams-confirmed', { name: dialogName, id: requestId })">{{ $confirmLabel }}</x-ui.button>
         </div>
     </section>
 </div>
