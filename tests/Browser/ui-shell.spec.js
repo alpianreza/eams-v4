@@ -5,7 +5,7 @@ const credentials = { login: 'qa-admin', password: 'Password123!' };
 async function login(page) {
     await page.goto('/login');
     await page.getByLabel('Username atau Email').fill(credentials.login);
-    await page.getByLabel('Password').fill(credentials.password);
+    await page.locator('#password').fill(credentials.password);
     await page.getByRole('button', { name: /Masuk/ }).click();
     await expect(page).toHaveURL(/\/home$/);
 }
