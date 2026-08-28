@@ -29,7 +29,7 @@ jobs:
           extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl, gd
           coverage: none
 
-      - name: Build + verify (capture all output)
+      - name: Build + verify + browser QA (capture all output)
         run: |
           set +e
           exec > ci-output.txt 2>&1
@@ -70,7 +70,54 @@ jobs:
           echo "### migrate"; php artisan migrate --force
           echo "### test"; php artisan test; TEST_EXIT=$?
           echo "### RESULT: artisan test exit = $TEST_EXIT"
-          exit $TEST_EXIT
+          if [ $TEST_EXIT -ne 0 ]; then
+            exit $TEST_EXIT
+          fi
+
+          echo "### install Playwright 1.55.0 (ephemeral, exact)"
+          npm install --no-save --package-lock=false --no-audit --no-fund @playwright/test@1.55.0
+          PLAYWRIGHT_INSTALL_EXIT=$?
+          if [ $PLAYWRIGHT_INSTALL_EXIT -ne 0 ]; then
+            echo "### RESULT: Playwright package install exit = $PLAYWRIGHT_INSTALL_EXIT"
+            exit $PLAYWRIGHT_INSTALL_EXIT
+          fi
+          npx playwright install --with-deps chromium
+          BROWSER_INSTALL_EXIT=$?
+          if [ $BROWSER_INSTALL_EXIT -ne 0 ]; then
+            echo "### RESULT: Chromium install exit = $BROWSER_INSTALL_EXIT"
+            exit $BROWSER_INSTALL_EXIT
+          fi
+
+          echo "### prepare browser QA user"
+          php artisan tinker --execute="\\App\\Models\\User::factory()->create(['name' => 'QA Admin', 'username' => 'qa-admin', 'email' => 'qa-admin@example.test', 'password' => \\Illuminate\\Support\\Facades\\Hash::make('Password123!'), 'role' => 'admin', 'permission' => 'write', 'status' => 'active']);"
+          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/browser-server.log 2>&1 &
+          SERVER_PID=$!
+          for attempt in {1..30}; do
+            curl --silent --fail http://127.0.0.1:8000/login > /dev/null && break
+            sleep 1
+          done
+
+          echo "### Chromium browser QA"
+          PLAYWRIGHT_BASE_URL=http://127.0.0.1:8000 npx playwright test
+          BROWSER_EXIT=$?
+          kill $SERVER_PID 2>/dev/null || true
+          if [ $BROWSER_EXIT -ne 0 ]; then
+            echo "### Laravel browser server log"
+            tail -n 100 storage/logs/browser-server.log
+          fi
+          echo "### RESULT: browser QA exit = $BROWSER_EXIT"
+          exit $BROWSER_EXIT
+
+      - name: Upload browser QA traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-qa-artifacts-${{ github.run_id }}
+          path: |
+            test-results
+            storage/logs/browser-server.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Update CI Status issue body with concise result
         if: always()
@@ -81,7 +128,7 @@ jobs:
             echo "**$(date -u +'%Y-%m-%d %H:%M UTC') · commit \`${GITHUB_SHA:0:8}\` · run #$GITHUB_RUN_ID**";
             echo "";
             echo '```';
-            tail -n 90 ci-output.txt;
+            tail -n 120 ci-output.txt;
             echo '```';
           } > ci-summary.md
           gh issue edit 2 --body-file ci-summary.md
