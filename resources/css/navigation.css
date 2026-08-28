@@ -18,8 +18,11 @@
   box-shadow: 0 0 12px color-mix(in srgb, var(--c-primary) 55%, transparent);
 }
 
+/* Jangan gunakan animation-fill-mode "both/forwards" di wrapper halaman.
+   Transform yang tertinggal akan membuat stacking context permanen sehingga
+   backdrop Bootstrap yang ditempel ke <body> berada di atas modal legacy. */
 [data-eams-page-content] {
-  animation: eams-page-enter 220ms cubic-bezier(.2, .75, .25, 1) both;
+  animation: eams-page-enter 220ms cubic-bezier(.2, .75, .25, 1);
 }
 
 html.is-navigating .navigation-progress {
