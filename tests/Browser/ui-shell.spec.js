@@ -60,6 +60,38 @@ test('desktop shell persists collapse and wire navigation state', async ({ page 
     expectNoBrowserErrors(errors, 'navigasi desktop');
 });
 
+test('Dashboard hydrates through wire navigation and remains responsive', async ({ page }) => {
+    const errors = collectBrowserErrors(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+
+    await page.locator('a[href$="/compliance/dashboard"]').first().click();
+    await expect(page).toHaveURL(/\/compliance\/dashboard$/);
+
+    const dashboard = page.locator('[data-eams-livewire="dashboard-overview"]');
+    await expect(dashboard).toBeVisible();
+    await expect(dashboard).toHaveAttribute('wire:id', /.+/);
+    await expect(dashboard.locator('[data-dashboard-kpi]')).toHaveCount(4);
+    await expect(dashboard.getByText('Inventory aktif', { exact: true })).toBeVisible();
+    await expect(dashboard.getByText('Checklist open', { exact: true })).toBeVisible();
+    await expect(dashboard.getByText('Checklist late', { exact: true })).toBeVisible();
+    await expect(dashboard.getByText('Expired (mis. APAR)', { exact: true })).toBeVisible();
+
+    const quickLinks = dashboard.locator('[data-dashboard-link]');
+    await expect(quickLinks).toHaveCount(4);
+    expect(await quickLinks.evaluateAll(links => links.every(link => link.hasAttribute('wire:navigate')))).toBe(true);
+
+    const explanationToggle = dashboard.locator('[data-dashboard-toggle="explanation"]');
+    await explanationToggle.click();
+    await expect(explanationToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(dashboard.locator('[data-dashboard-explanation]')).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+    expect(noOverflow).toBe(true);
+    expectNoBrowserErrors(errors, 'Dashboard Livewire');
+});
+
 test('mobile drawer, theme persistence, and overflow remain stable', async ({ page }) => {
     const errors = collectBrowserErrors(page);
     await page.setViewportSize({ width: 390, height: 844 });
