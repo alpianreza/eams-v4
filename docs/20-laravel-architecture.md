@@ -182,6 +182,7 @@ Tidak menggunakan React, Vue, Inertia SPA, AdminLTE, atau Bootstrap sebagai targ
 - Bootstrap JS/CSS tetap dibundel untuk halaman legacy.
 - Shell dan komponen baru tidak menggunakan hook Bootstrap.
 - Bootstrap baru boleh dihapus setelah seluruh replacement bekerja, pencarian penggunaan bersih, browser QA hijau, dan test suite tidak regression.
+- Wrapper halaman yang dapat memuat modal legacy tidak boleh mempertahankan `transform` atau stacking context dari animation fill mode setelah transisi selesai.
 
 ## 21. Application shell
 
@@ -196,6 +197,8 @@ Reusable Blade components berada di `resources/views/components/ui/`:
 Button, Input, Textarea, Select, Checkbox, Radio, Switch, Badge, Card, Table, Modal, Drawer, Toast, Alert, Dropdown, Tabs, Pagination, Skeleton, Empty State, Confirm Dialog, File Upload, Image Preview, dan Status Indicator.
 
 Detail token, states, accessibility, migration matrix, dan QA gate ada di `docs/21-ui-ux-design-system.md`.
+
+Nilai Blade dinamis yang dipakai oleh ekspresi Alpine pada atribut forwarded harus dikompilasi pada root component (misalnya ke state `x-data`) sebelum atribut diteruskan; literal directive Blade tidak boleh sampai ke browser.
 
 ## 23. Semantic status presentation
 
@@ -226,7 +229,7 @@ Dashboard mengambil KPI dari aturan backend yang sudah ada:
 - expiry
 - kondisi `GOOD`, `NEED_REPAIR`, `NOT_ACTIVE`
 
-Canonical period engine tetap menjadi sumber status. Migrasi UI boleh menambah tampilan actionable, refresh, loading, empty state, dan link ke modul terkait, tetapi tidak boleh menciptakan formula KPI baru atau mengubah definisi existing.
+Canonical period engine tetap menjadi sumber status. Migrasi UI boleh menambah tampilan actionable, refresh, loading, empty state, dan link ke modul terkait, tetapi tidak boleh menciptakan formula KPI baru atau mengubah definisi existing. Controller tetap menghitung KPI; Livewire digunakan sebagai boundary presentasi kecil dan bukan sebagai salinan business rule.
 
 ## 26. Testing strategy
 
@@ -242,19 +245,19 @@ Test bisnis utama meliputi period engine, status/evidence, PIC, QR, device thres
 
 ## 27. Browser QA
 
-Browser QA harus memeriksa:
+Browser QA otomatis memakai Playwright 1.55.0 dan Chromium. Gate Milestone A pada commit `0f401c61` lulus dengan:
 
-- login
-- sidebar collapse persistence
-- drawer mobile dan backdrop
-- theme persistence
-- dropdown/modal/drawer/confirm/upload/image preview
-- `wire:navigate`, back/forward, dan loading indicator
-- console dan Livewire hydration error
-- desktop/mobile overflow
-- minimal satu modal Bootstrap legacy
+- empat dari empat skenario browser lulus;
+- desktop shell, collapse persistence, `wire:navigate`, dan back/forward;
+- mobile drawer, Escape, theme persistence, dan viewport 390 px tanpa page-level horizontal overflow;
+- dropdown, modal, drawer, confirm dialog, file upload, image preview, dan toast;
+- tidak ada console error, Alpine expression error, page error, atau hydration error;
+- modal Bootstrap legacy `/users#roleModal` tetap dapat dibuka, memiliki instance Bootstrap, lalu ditutup sampai event `hidden.bs.modal`;
+- `php artisan test`: 192 test / 601 assertion / exit 0;
+- `npm run build`: exit 0;
+- browser QA: 4 passed / exit 0.
 
-QA browser dilaksanakan otomatis dengan Playwright pada Chromium dan tetap dilengkapi smoke test manual sebelum deployment.
+Smoke test manual tetap diperlukan sebelum deployment produksi.
 
 ## 28. Phase 2B migration status
 
@@ -264,8 +267,8 @@ QA browser dilaksanakan otomatis dengan Playwright pada Chromium dan tetap dilen
 | Tokens/theme | Implemented |
 | Application shell | Implemented |
 | Reusable components | Implemented |
-| Browser QA automation | In progress |
-| Dashboard | Next milestone |
+| Browser QA automation | Implemented — Milestone A 4/4 passed |
+| Dashboard | Active milestone |
 | Inventory | Pending after Dashboard |
 | Checklist STANDARD/GRID | Pending |
 | Other modules | Pending |

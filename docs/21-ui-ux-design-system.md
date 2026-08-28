@@ -1,6 +1,6 @@
 # 21 — EAMS UI/UX Design System
 
-> **Status:** Phase 2B aktif. Milestone A (foundation + application shell + reusable primitives) telah diimplementasikan; migrasi halaman dilakukan bertahap agar backend dan Bootstrap legacy tetap stabil.
+> **Status:** Phase 2B aktif. Milestone A (foundation + application shell + reusable primitives) telah diimplementasikan dan lulus browser gate 4/4; Dashboard menjadi milestone aktif berikutnya.
 > **Sumber aturan:** `docs/17-business-specification.md`, `docs/19-decision-log.md`, dan `docs/20-laravel-architecture.md`.
 > **Prinsip utama:** **USABILITY > DECORATION** — compact, information-dense, cepat, aksesibel, dan konsisten untuk operasi harian.
 
@@ -24,6 +24,7 @@ React, Vue, Inertia SPA, AdminLTE, dan Bootstrap bukan target akhir. Bootstrap 5
 4. Shell dan komponen baru tidak memakai hook JavaScript Bootstrap.
 5. Halaman legacy boleh tetap memakai class Bootstrap sampai dimigrasikan per modul.
 6. Bootstrap baru boleh dihapus setelah pencarian penggunaan, browser regression test, build, dan seluruh test suite hijau.
+7. Wrapper halaman tidak boleh meninggalkan `transform`/stacking context persisten setelah animasi, karena modal legacy berada di dalam wrapper sedangkan backdrop ditempel ke `<body>`.
 
 Entry point:
 
@@ -108,6 +109,8 @@ Blade primitives berada di `resources/views/components/ui/`:
 
 Breadcrumb berada di `resources/views/components/breadcrumb.blade.php`. Semua komponen harus mendukung atribut tambahan, focus-visible, disabled/loading/error state bila relevan, dark mode, dan ukuran responsif.
 
+Nilai Blade dinamis yang digunakan dalam ekspresi Alpine pada atribut forwarded harus lebih dulu dimasukkan ke state `x-data`; jangan meneruskan literal directive seperti `@js(...)` melalui atribut child component.
+
 ## 7. Livewire dan Alpine boundaries
 
 Gunakan Livewire untuk state server dan interaksi data: filter, search, pagination, CRUD, checklist, batch save, dashboard, notification, dan upload bila sesuai.
@@ -136,8 +139,9 @@ Komponen Livewire harus kecil berdasarkan tanggung jawab. Business rule tetap be
 | Tokens/theme | Implemented | Light/dark/system + enam aksen |
 | Application shell | Implemented | Sidebar, topbar, breadcrumb, navigation |
 | Component primitives | Implemented | Catalog Milestone A tersedia |
-| Bootstrap legacy | Remaining | Dipertahankan untuk halaman belum dimigrasikan |
-| Dashboard | Next | Migrasi pertama setelah Milestone A hijau |
+| Browser QA automation | Implemented | Chromium 4/4; console/hydration bersih |
+| Bootstrap legacy | Remaining, guarded | Modal regression lulus; dipertahankan untuk halaman legacy |
+| Dashboard | Active | Migrasi pertama setelah Milestone A hijau |
 | Inventory | Pending | Setelah Dashboard |
 | Checklist standard/grid | Pending | Setelah Inventory |
 | Modul lain | Pending | Bertahap |
@@ -145,19 +149,18 @@ Komponen Livewire harus kecil berdasarkan tanggung jawab. Business rule tetap be
 
 ## 10. Browser QA gate
 
-Sebelum milestone dinyatakan selesai, jalankan browser QA untuk:
+Gate Milestone A pada commit `0f401c61` telah lulus:
 
-- login dan render shell
-- sidebar collapse persistence
-- drawer mobile + backdrop
-- theme persistence
-- dropdown, modal, drawer, confirm, upload, image preview
-- `wire:navigate`, back/forward, dan loading indicator
-- console error dan Livewire hydration error
-- overflow desktop/mobile
-- minimal satu modal Bootstrap legacy untuk mendeteksi regression
+- desktop shell, sidebar collapse persistence, `wire:navigate`, back/forward;
+- mobile drawer/backdrop, Escape, theme persistence, dan viewport 390 px tanpa page-level overflow;
+- dropdown, modal, drawer, confirm dialog, file upload, image preview fallback, serta toast;
+- console error, Alpine expression error, page error, dan Livewire hydration error kosong;
+- satu modal Bootstrap legacy di `/users` terbukti open, memiliki Bootstrap instance, close, dan memancarkan `hidden.bs.modal`;
+- `php artisan test`: **192 passed / 601 assertions / exit 0**;
+- `npm run build`: **exit 0**;
+- Playwright Chromium: **4 passed / exit 0**.
 
-Selain browser QA, `npm run build` dan `php artisan test` harus hijau.
+Browser assertion tetap fail-fast pada setiap checkpoint interaksi; error tidak di-whitelist atau diabaikan.
 
 ## 11. Known issues / batas saat ini
 
