@@ -12,11 +12,27 @@ async function login(page) {
 
 function collectBrowserErrors(page) {
     const errors = [];
-    page.on('pageerror', error => errors.push(`pageerror: ${error.stack ?? error.message}`));
+    const diagnostics = [];
+
     page.on('console', message => {
-        if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+        if (message.type() === 'warning') {
+            diagnostics.push(`warning: ${message.text()}`);
+        }
+
+        if (message.type() === 'error') {
+            errors.push(`console: ${message.text()}`);
+        }
     });
+    page.on('pageerror', error => {
+        const context = diagnostics.length ? `\n${diagnostics.join('\n')}` : '';
+        errors.push(`pageerror: ${error.stack ?? error.message}${context}`);
+    });
+
     return errors;
+}
+
+function expectNoBrowserErrors(errors, checkpoint) {
+    expect(errors, `Browser error setelah ${checkpoint}`).toEqual([]);
 }
 
 test('desktop shell persists collapse and wire navigation state', async ({ page }) => {
@@ -41,7 +57,7 @@ test('desktop shell persists collapse and wire navigation state', async ({ page 
     await expect(page).toHaveURL(/\/home$/);
     await page.goForward();
     await expect(page).toHaveURL(/\/compliance\/dashboard$/);
-    expect(errors).toEqual([]);
+    expectNoBrowserErrors(errors, 'navigasi desktop');
 });
 
 test('mobile drawer, theme persistence, and overflow remain stable', async ({ page }) => {
@@ -62,7 +78,7 @@ test('mobile drawer, theme persistence, and overflow remain stable', async ({ pa
 
     const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
     expect(noOverflow).toBe(true);
-    expect(errors).toEqual([]);
+    expectNoBrowserErrors(errors, 'shell mobile');
 });
 
 test('Tailwind and Alpine component interactions work in Chromium', async ({ page }) => {
@@ -71,25 +87,30 @@ test('Tailwind and Alpine component interactions work in Chromium', async ({ pag
     await login(page);
     await page.goto('/__qa/ui-components');
     await expect(page.locator('[data-qa="component-showcase"]')).toBeVisible();
+    expectNoBrowserErrors(errors, 'render awal component catalog');
 
     await page.locator('[data-qa="open-dropdown"]').click();
     await expect(page.getByRole('menu')).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Menu QA aktif' })).toBeVisible();
+    expectNoBrowserErrors(errors, 'dropdown');
 
     await page.locator('[data-qa="open-modal"]').click();
     await expect(page.getByRole('dialog', { name: 'Modal QA' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: 'Modal QA' })).toBeHidden();
+    expectNoBrowserErrors(errors, 'modal');
 
     await page.locator('[data-qa="open-drawer"]').click();
     await expect(page.getByRole('dialog', { name: 'Drawer QA' })).toBeVisible();
     await page.keyboard.press('Escape');
+    expectNoBrowserErrors(errors, 'drawer');
 
     await page.locator('[data-qa="open-confirm"]').click();
     const confirmDialog = page.getByRole('alertdialog', { name: 'Konfirmasi QA' });
     await expect(confirmDialog).toBeVisible();
     await expect(confirmDialog.getByText('Konfirmasi browser QA')).toBeVisible();
     await confirmDialog.locator('section').getByRole('button', { name: 'Batal' }).click();
+    expectNoBrowserErrors(errors, 'confirm dialog');
 
     await page.locator('input[name="qa_photo"]').setInputFiles({
         name: 'qa-image.png',
@@ -98,10 +119,11 @@ test('Tailwind and Alpine component interactions work in Chromium', async ({ pag
     });
     await expect(page.getByText('qa-image.png')).toBeVisible();
     await expect(page.getByText('Fallback gambar QA')).toBeVisible();
+    expectNoBrowserErrors(errors, 'file upload dan image preview');
 
     await page.locator('[data-qa="show-toast"]').click();
     await expect(page.getByText('QA toast berhasil')).toBeVisible();
-    expect(errors).toEqual([]);
+    expectNoBrowserErrors(errors, 'toast');
 });
 
 test('Bootstrap legacy modal still works beside Livewire and Tailwind', async ({ page }) => {
@@ -128,5 +150,5 @@ test('Bootstrap legacy modal still works beside Livewire and Tailwind', async ({
     await page.locator('#roleModal .modal-header [data-bs-dismiss="modal"]').click();
     await page.evaluate(() => window.__roleModalHidden);
     await expect(page.locator('#roleModal.modal.show')).toHaveCount(0);
-    expect(errors).toEqual([]);
+    expectNoBrowserErrors(errors, 'modal Bootstrap legacy');
 });
