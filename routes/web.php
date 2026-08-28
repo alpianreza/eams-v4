@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Compliance\InventoryIndex;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\LoginSessionController;
@@ -164,7 +165,9 @@ Route::middleware('auth')->group(function () {
     Route::get('compliance/report/{inventory}/pdf', [ComplianceReportController::class, 'pdf'])
         ->name('compliance.report.pdf')->middleware('can:access-compliance-pdf');
 
-    Route::get('compliance/inventory', [ComplianceInventoryController::class, 'index'])->name('compliance.inventory.index');
+    // Full-page Livewire component: owns list filter/search/pagination state (docs 20 par.24).
+    // Business rules (store/detail/update/destroy) remain in ComplianceInventoryController.
+    Route::get('compliance/inventory', InventoryIndex::class)->name('compliance.inventory.index');
     Route::get('compliance/inventory/create', [ComplianceInventoryController::class, 'create'])->name('compliance.inventory.create');
     Route::get('compliance/inventory/detail/{inventory}', [ComplianceInventoryController::class, 'show'])->name('compliance.inventory.detail');
     Route::post('compliance/inventory', [ComplianceInventoryController::class, 'store'])->name('compliance.inventory.store')->middleware('can:manage-inventory');

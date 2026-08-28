@@ -3,157 +3,127 @@
 @section('title', 'Edit Inventory')
 
 @section('content')
-<x-page-header
-    variant="card"
-    tone="inventory"
-    eyebrow="Compliance inventory"
-    eyebrow-icon="bi-pencil-square"
-    :title="'Edit ' . $inventory->asset_code"
-    lead="Perbarui kondisi, lokasi spesifik, PIC, dan dokumentasi tanpa mengubah identitas utama aset."
-    :back-url="route('compliance.inventory.detail', $inventory)"
->
-    <x-slot:actions>
-        <a href="{{ route('compliance.inventory.detail', $inventory) }}" class="btn btn-outline-secondary">
-            <i class="bi bi-eye me-1" aria-hidden="true"></i> Lihat detail
-        </a>
-    </x-slot:actions>
-</x-page-header>
+@php
+    $currentPics = old('pic_ids', $inventory->pics->pluck('id')->all());
+@endphp
 
-<form method="POST" action="{{ route('compliance.inventory.update', $inventory) }}" enctype="multipart/form-data" class="form-shell">
-    @csrf
-    @method('PUT')
-
-    <section class="form-section">
-        <div class="form-section__heading">
-            <span class="form-section__icon"><i class="bi bi-lock" aria-hidden="true"></i></span>
-            <div>
-                <h2 class="form-section__title">Identitas terkunci</h2>
-                <p class="form-section__lead">Kategori, item, area utama, dan nomor inventory tidak dapat diubah setelah aset dibuat.</p>
-            </div>
+<div class="eams:mx-auto eams:max-w-4xl eams:space-y-4 eams:sm:space-y-5"
+     data-eams-page="inventory-edit">
+    <header class="eams:flex eams:flex-col eams:gap-3 eams:rounded-eams-lg eams:border eams:border-border eams:bg-surface eams:px-4 eams:py-4 eams:shadow-eams-1 eams:sm:flex-row eams:sm:items-center eams:sm:justify-between eams:sm:px-5">
+        <div class="eams:min-w-0">
+            <p class="eams:mb-1 eams:text-[11px] eams:font-bold eams:uppercase eams:tracking-[0.12em] eams:text-brand">Compliance inventory</p>
+            <h1 class="eams:m-0 eams:font-mono eams:text-xl eams:font-extrabold eams:tracking-tight eams:text-ink">Edit {{ $inventory->asset_code }}</h1>
+            <p class="eams:mb-0 eams:mt-1 eams:text-[13px] eams:text-muted">Perbarui kondisi, lokasi spesifik, PIC, dan dokumentasi tanpa mengubah identitas utama aset.</p>
         </div>
-
-        <div class="locked-fields">
-            <div class="locked-field">
-                <span class="locked-field__label">Kategori</span>
-                <span class="locked-field__value">{{ $inventory->category->name ?? '—' }}</span>
-            </div>
-            <div class="locked-field">
-                <span class="locked-field__label">Item</span>
-                <span class="locked-field__value">{{ $inventory->itemType->name ?? '—' }}</span>
-            </div>
-            <div class="locked-field">
-                <span class="locked-field__label">Area utama</span>
-                <span class="locked-field__value">{{ $inventory->area->name ?? '—' }}</span>
-            </div>
-            <div class="locked-field">
-                <span class="locked-field__label">Nomor inventory</span>
-                <span class="locked-field__value text-mono">{{ $inventory->asset_code }}</span>
-            </div>
+        <div class="eams:flex eams:flex-wrap eams:gap-2">
+            <x-ui.button :href="route('compliance.inventory.detail', $inventory)" navigate variant="secondary" icon="eye">
+                Lihat detail
+            </x-ui.button>
         </div>
-    </section>
+    </header>
 
-    <section class="form-section">
-        <div class="form-section__heading">
-            <span class="form-section__icon"><i class="bi bi-sliders" aria-hidden="true"></i></span>
-            <div>
-                <h2 class="form-section__title">Kondisi &amp; penempatan</h2>
-                <p class="form-section__lead">Data operasional berikut dapat diperbarui sesuai kondisi lapangan.</p>
-            </div>
-        </div>
+    <form method="POST" action="{{ route('compliance.inventory.update', $inventory) }}" enctype="multipart/form-data"
+          class="eams:space-y-4 eams:sm:space-y-5">
+        @csrf
+        @method('PUT')
 
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label for="specific_area" class="form-label">Lokasi spesifik</label>
-                <input id="specific_area" type="text" name="specific_area" value="{{ old('specific_area', $inventory->specific_area) }}" class="form-control @error('specific_area') is-invalid @enderror" placeholder="Contoh: Office Lt. 1 / Line A">
-                @error('specific_area')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
+        <x-ui.card title="Identitas terkunci" subtitle="Kategori, item, area utama, dan nomor inventory tidak dapat diubah setelah aset dibuat.">
+            <dl class="eams:grid eams:grid-cols-1 eams:gap-3 eams:sm:grid-cols-2 eams:xl:grid-cols-4">
+                <div>
+                    <dt class="eams:text-xs eams:font-semibold eams:text-muted">Kategori</dt>
+                    <dd class="eams:mb-0 eams:mt-0.5 eams:text-sm eams:font-medium eams:text-ink">{{ $inventory->category->name ?? '-' }}</dd>
+                </div>
+                <div>
+                    <dt class="eams:text-xs eams:font-semibold eams:text-muted">Item</dt>
+                    <dd class="eams:mb-0 eams:mt-0.5 eams:text-sm eams:font-medium eams:text-ink">{{ $inventory->itemType->name ?? '-' }}</dd>
+                </div>
+                <div>
+                    <dt class="eams:text-xs eams:font-semibold eams:text-muted">Area utama</dt>
+                    <dd class="eams:mb-0 eams:mt-0.5 eams:text-sm eams:font-medium eams:text-ink">{{ $inventory->area->name ?? '-' }}</dd>
+                </div>
+                <div>
+                    <dt class="eams:text-xs eams:font-semibold eams:text-muted">Nomor inventory</dt>
+                    <dd class="eams:mb-0 eams:mt-0.5 eams:font-mono eams:text-sm eams:font-medium eams:text-ink">{{ $inventory->asset_code }}</dd>
+                </div>
+            </dl>
+        </x-ui.card>
 
-            <div class="col-md-6">
-                <label for="type_description" class="form-label">Tipe / spesifikasi</label>
-                <input id="type_description" type="text" name="type_description" value="{{ old('type_description', $inventory->type_description) }}" class="form-control @error('type_description') is-invalid @enderror">
-                @error('type_description')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
+        <x-ui.card title="Kondisi & penempatan" subtitle="Data operasional berikut dapat diperbarui sesuai kondisi lapangan.">
+            <div class="eams:grid eams:grid-cols-1 eams:gap-4 eams:md:grid-cols-2">
+                <x-ui.input name="specific_area" label="Lokasi spesifik" placeholder="Contoh: Office Lt. 1 / Line A"
+                            value="{{ old('specific_area', $inventory->specific_area) }}"
+                            :error="$errors->first('specific_area')" />
 
-            <div class="col-md-4">
-                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
+                <x-ui.input name="type_description" label="Tipe / spesifikasi"
+                            value="{{ old('type_description', $inventory->type_description) }}"
+                            :error="$errors->first('type_description')" />
+
+                <x-ui.select name="status" label="Status" required :error="$errors->first('status')">
                     @foreach($statuses as $status)
-                        <option value="{{ $status }}" @selected(old('status', $inventory->status) === $status)>{{ match($status) { 'good' => 'Baik', 'need_repair' => 'Perlu perbaikan', default => 'Tidak aktif' } }}</option>
+                        <option value="{{ $status }}" @selected(old('status', $inventory->status) === $status)>
+                            {{ match($status) { 'good' => 'Baik', 'need_repair' => 'Perlu perbaikan', default => 'Tidak aktif' } }}
+                        </option>
                     @endforeach
-                </select>
-                @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
+                </x-ui.select>
 
-            <div class="col-md-2">
-                <label for="qty" class="form-label">Jumlah <span class="text-danger">*</span></label>
-                <input id="qty" type="number" name="qty" value="{{ old('qty', $inventory->qty) }}" min="1" class="form-control @error('qty') is-invalid @enderror" required>
-                @error('qty')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
+                <x-ui.input name="qty" label="Jumlah (unit)" type="number" min="1"
+                            value="{{ old('qty', $inventory->qty) }}" required
+                            :error="$errors->first('qty')" />
 
-            <div class="col-md-3">
-                <label for="expired_date" class="form-label">Tanggal kedaluwarsa</label>
-                <input id="expired_date" type="date" name="expired_date" value="{{ old('expired_date', $inventory->expired_date) }}" class="form-control @error('expired_date') is-invalid @enderror">
-                @error('expired_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
+                <x-ui.input name="expired_date" label="Tanggal kedaluwarsa" type="date"
+                            value="{{ old('expired_date', $inventory->expired_date) }}"
+                            :error="$errors->first('expired_date')" />
 
-            <div class="col-md-3 d-flex align-items-end">
-                <div class="form-check form-switch mb-2">
+                <div class="eams:flex eams:items-end eams:gap-0">
                     <input type="hidden" name="active" value="0">
-                    <input id="active" type="checkbox" name="active" value="1" class="form-check-input" @checked((bool) old('active', $inventory->active))>
-                    <label for="active" class="form-check-label">Inventory aktif</label>
+                    <x-ui.checkbox name="active" label="Inventory aktif" :checked="(bool) old('active', $inventory->active)"
+                                   hint="Nonaktifkan untuk mengeluarkan aset dari monitoring aktif." />
                 </div>
             </div>
+        </x-ui.card>
+
+        <x-ui.card title="PIC & dokumentasi" subtitle="Perbarui penanggung jawab, foto, dan catatan pendukung.">
+            <div class="eams:grid eams:grid-cols-1 eams:gap-4 eams:md:grid-cols-2">
+                <div class="eams:grid eams:gap-1.5" data-eams-component="select">
+                    <label for="pic_ids" class="eams:text-[13px] eams:font-semibold eams:text-ink">Person in charge</label>
+                    <select id="pic_ids" name="pic_ids[]" multiple size="5"
+                            class="eams:block eams:min-h-10 eams:w-full eams:rounded-eams eams:border eams:border-border-strong eams:bg-surface eams:px-3 eams:py-2 eams:text-sm eams:text-ink eams:outline-none eams:transition eams:focus:border-brand eams:focus:ring-2 eams:focus:ring-brand-soft">
+                        @foreach($picUsers as $user)
+                            <option value="{{ $user->id }}" @selected(in_array((string) $user->id, array_map('strval', $currentPics), true))>{{ $user->name }} &middot; {{ $user->username }}</option>
+                        @endforeach
+                    </select>
+                    <p class="eams:m-0 eams:text-xs eams:text-muted">Maksimal dua PIC dengan kedudukan setara.</p>
+                    @error('pic_ids')<p class="eams:m-0 eams:text-xs eams:text-danger">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="eams:grid eams:gap-1.5" data-eams-component="file-upload">
+                    <label for="photo" class="eams:text-[13px] eams:font-semibold eams:text-ink">Ganti foto inventory</label>
+                    <x-ui.file-upload name="photo" label="Pilih foto pengganti"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      hint="JPG, PNG, atau WebP. Maksimum {{ number_format(config('eams.upload.max_kb', 5120) / 1024, 0) }} MB." />
+                    @error('photo')<p class="eams:m-0 eams:text-xs eams:text-danger">{{ $message }}</p>@enderror
+                    @if($inventory->photo)
+                        <p class="eams:m-0 eams:text-xs eams:text-muted">
+                            Foto tersimpan tersedia.
+                            <a href="{{ route('files.show', ['category' => 'inventory', 'path' => $inventory->photo]) }}" target="_blank" rel="noopener" class="eams:font-semibold eams:text-brand eams:no-underline eams:hover:underline">Lihat foto saat ini</a>.
+                        </p>
+                    @else
+                        <p class="eams:m-0 eams:text-xs eams:text-muted">Belum ada foto. JPG, PNG, atau WebP.</p>
+                    @endif
+                </div>
+
+                <div class="eams:md:col-span-2">
+                    <x-ui.textarea name="remark" label="Catatan" rows="3"
+                                   placeholder="Kondisi, petunjuk lokasi, atau informasi tambahan..."
+                                   :error="$errors->first('remark')">{{ old('remark', $inventory->remark) }}</x-ui.textarea>
+                </div>
+            </div>
+        </x-ui.card>
+
+        <div class="eams:flex eams:flex-wrap eams:items-center eams:justify-end eams:gap-2">
+            <x-ui.button :href="route('compliance.inventory.detail', $inventory)" navigate variant="secondary">Batal</x-ui.button>
+            <x-ui.button type="submit" variant="primary" icon="check-lg">Simpan perubahan</x-ui.button>
         </div>
-    </section>
-
-    <section class="form-section">
-        <div class="form-section__heading">
-            <span class="form-section__icon"><i class="bi bi-people" aria-hidden="true"></i></span>
-            <div>
-                <h2 class="form-section__title">PIC &amp; dokumentasi</h2>
-                <p class="form-section__lead">Perbarui penanggung jawab, foto, dan catatan pendukung.</p>
-            </div>
-        </div>
-
-        <div class="row g-3">
-            <div class="col-lg-6">
-                <label for="pic_ids" class="form-label">Person in charge</label>
-                @php($currentPics = old('pic_ids', $inventory->pics->pluck('id')->all()))
-                <select id="pic_ids" name="pic_ids[]" class="form-select @error('pic_ids') is-invalid @enderror" multiple size="5">
-                    @foreach($picUsers as $user)
-                        <option value="{{ $user->id }}" @selected(in_array((string) $user->id, array_map('strval', $currentPics), true))>{{ $user->name }} · {{ $user->username }}</option>
-                    @endforeach
-                </select>
-                @error('pic_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                <div class="form-text">Maksimal dua PIC dengan kedudukan setara.</div>
-            </div>
-
-            <div class="col-lg-6">
-                <label for="photo" class="form-label">Ganti foto inventory</label>
-                <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="form-control @error('photo') is-invalid @enderror">
-                @error('photo')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                @if($inventory->photo)
-                    <div class="form-text">
-                        Foto tersimpan tersedia. <a href="{{ route('files.show', ['category' => 'inventory', 'path' => $inventory->photo]) }}" target="_blank" rel="noopener">Lihat foto saat ini</a>.
-                    </div>
-                @else
-                    <div class="form-text">Belum ada foto. JPG, PNG, atau WebP.</div>
-                @endif
-            </div>
-
-            <div class="col-12">
-                <label for="remark" class="form-label">Catatan</label>
-                <textarea id="remark" name="remark" class="form-control @error('remark') is-invalid @enderror" rows="3" placeholder="Kondisi, petunjuk lokasi, atau informasi tambahan...">{{ old('remark', $inventory->remark) }}</textarea>
-                @error('remark')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
-        </div>
-    </section>
-
-    <div class="form-actions">
-        <a href="{{ route('compliance.inventory.detail', $inventory) }}" class="btn btn-outline-secondary">Batal</a>
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg me-1" aria-hidden="true"></i> Simpan perubahan
-        </button>
-    </div>
-</form>
+    </form>
+</div>
 @endsection

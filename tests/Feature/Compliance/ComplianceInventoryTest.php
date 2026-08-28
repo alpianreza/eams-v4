@@ -117,7 +117,7 @@ class ComplianceInventoryTest extends TestCase
         ])->assertForbidden();   // global write-guard
     }
 
-    public function test_inventory_list_uses_bootstrap_pagination_without_oversized_svg_arrows(): void
+    public function test_inventory_list_uses_eams_pagination_without_oversized_svg_arrows(): void
     {
         [$category, $itemType, $area] = $this->makeContext();
 
@@ -135,9 +135,10 @@ class ComplianceInventoryTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('compliance.inventory.index'))
             ->assertOk()
-            ->assertSee('pagination', false)
-            ->assertSee('page-item', false)
-            ->assertDontSee('<svg', false);
+            ->assertSee('data-eams-component="pagination"', false)
+            ->assertSee('wire:click="gotoPage', false)
+            ->assertDontSee('<svg', false)
+            ->assertDontSee('page-item', false);
     }
 
     public function test_inventory_detail_renders_structured_information_and_secure_media_urls(): void
