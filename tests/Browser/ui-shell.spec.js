@@ -89,7 +89,7 @@ test('Tailwind and Alpine component interactions work in Chromium', async ({ pag
     const confirmDialog = page.getByRole('alertdialog', { name: 'Konfirmasi QA' });
     await expect(confirmDialog).toBeVisible();
     await expect(confirmDialog.getByText('Konfirmasi browser QA')).toBeVisible();
-    await confirmDialog.getByRole('button', { name: 'Batal' }).click();
+    await confirmDialog.locator('section').getByRole('button', { name: 'Batal' }).click();
 
     await page.locator('input[name="qa_photo"]').setInputFiles({
         name: 'qa-image.png',
@@ -111,10 +111,22 @@ test('Bootstrap legacy modal still works beside Livewire and Tailwind', async ({
     await page.goto('/users');
 
     await expect(page.getByRole('heading', { name: 'Manajemen User' })).toBeVisible();
+    await page.evaluate(() => {
+        const modal = document.getElementById('roleModal');
+        window.__roleModalShown = new Promise(resolve => modal.addEventListener('shown.bs.modal', () => resolve(true), { once: true }));
+    });
     await page.locator('[data-bs-target="#roleModal"]').click();
+    await page.evaluate(() => window.__roleModalShown);
     await expect(page.locator('#roleModal.modal.show')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tambah Role' })).toBeVisible();
-    await page.evaluate(() => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('roleModal')).hide());
+    expect(await page.evaluate(() => window.bootstrap.Modal.getInstance(document.getElementById('roleModal')) !== null)).toBe(true);
+
+    await page.evaluate(() => {
+        const modal = document.getElementById('roleModal');
+        window.__roleModalHidden = new Promise(resolve => modal.addEventListener('hidden.bs.modal', () => resolve(true), { once: true }));
+    });
+    await page.locator('#roleModal .modal-header [data-bs-dismiss="modal"]').click();
+    await page.evaluate(() => window.__roleModalHidden);
     await expect(page.locator('#roleModal.modal.show')).toHaveCount(0);
     expect(errors).toEqual([]);
 });

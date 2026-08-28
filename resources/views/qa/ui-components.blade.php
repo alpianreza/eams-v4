@@ -14,7 +14,7 @@
             <x-ui.button data-qa="open-modal" x-on:click="$dispatch('open-modal', 'qa-modal')">Buka modal</x-ui.button>
             <x-ui.button data-qa="open-drawer" variant="secondary" x-on:click="$dispatch('open-drawer', 'qa-drawer')">Buka drawer</x-ui.button>
             <x-ui.button data-qa="open-confirm" variant="danger" x-on:click="window.dispatchEvent(new CustomEvent('eams-confirm', { detail: { name: 'qa-confirm', message: 'Konfirmasi browser QA', id: 21 } }))">Buka konfirmasi</x-ui.button>
-            <x-ui.button data-qa="show-toast" variant="secondary" x-on:click="window.eamsToast('success', 'QA toast berhasil')">Tampilkan toast</x-ui.button>
+            <x-ui.button data-qa="show-toast" variant="secondary" x-on:click="window.eamsToast('QA toast berhasil', 'success')">Tampilkan toast</x-ui.button>
 
             <x-ui.dropdown>
                 <x-slot:trigger>
