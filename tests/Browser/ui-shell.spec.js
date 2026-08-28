@@ -35,6 +35,13 @@ function expectNoBrowserErrors(errors, checkpoint) {
     expect(errors, `Browser error setelah ${checkpoint}`).toEqual([]);
 }
 
+async function expectNoHorizontalOverflow(page, checkpoint) {
+    await expect.poll(
+        () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+        { message: `Horizontal overflow setelah ${checkpoint}`, timeout: 2_000 },
+    ).toBeLessThanOrEqual(1);
+}
+
 test('desktop shell persists collapse and wire navigation state', async ({ page }) => {
     const errors = collectBrowserErrors(page);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -87,8 +94,7 @@ test('Dashboard hydrates through wire navigation and remains responsive', async 
     await expect(dashboard.locator('[data-dashboard-explanation]')).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-    expect(noOverflow).toBe(true);
+    await expectNoHorizontalOverflow(page, 'layout responsif Dashboard');
     expectNoBrowserErrors(errors, 'Dashboard Livewire');
 });
 
@@ -108,8 +114,7 @@ test('mobile drawer, theme persistence, and overflow remain stable', async ({ pa
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');
 
-    const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-    expect(noOverflow).toBe(true);
+    await expectNoHorizontalOverflow(page, 'shell mobile');
     expectNoBrowserErrors(errors, 'shell mobile');
 });
 
