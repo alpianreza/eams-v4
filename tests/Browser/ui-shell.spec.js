@@ -113,7 +113,7 @@ test('Bootstrap legacy modal still works beside Livewire and Tailwind', async ({
     await page.locator('[data-bs-target="#roleModal"]').click();
     await expect(page.locator('#roleModal.modal.show')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tambah Role' })).toBeVisible();
-    await page.locator('#roleModal [data-bs-dismiss="modal"]').first().click();
+    await page.keyboard.press('Escape');
     await expect(page.locator('#roleModal.modal.show')).toHaveCount(0);
     expect(errors).toEqual([]);
 });

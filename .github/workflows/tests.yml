@@ -119,7 +119,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Update CI Status issue body with concise result
+      - name: Update CI Status issue body with result
         if: always()
         run: |
           {
@@ -128,7 +128,7 @@ jobs:
             echo "**$(date -u +'%Y-%m-%d %H:%M UTC') · commit \`${GITHUB_SHA:0:8}\` · run #$GITHUB_RUN_ID**";
             echo "";
             echo '```';
-            tail -n 120 ci-output.txt;
+            tail -n 400 ci-output.txt;
             echo '```';
           } > ci-summary.md
           gh issue edit 2 --body-file ci-summary.md
