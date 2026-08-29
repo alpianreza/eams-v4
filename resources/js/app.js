@@ -217,6 +217,59 @@ Alpine.data('eamsShell', () => ({
     },
 }));
 
+/* Repeater: baris dinamis untuk form multi-entry (Thermal, Kuesioner builder). */
+/* Cascading select: dependent dropdown untuk Report/Print Center (fetch endpoint JSON). */
+Alpine.data('eamsCascading', (sourceUrl, levels, initial = {}) => ({
+    levels,
+    values: { ...initial },
+    cache: {},
+    async ensureOptions(index) {
+        const parentKey = index === 0 ? '' : this.levels[index - 1].name;
+        const parentValue = index === 0 ? '' : (this.values[parentKey] || '');
+        const key = index + ':' + parentValue;
+        if (this.cache[key]) return;
+        const url = new URL(sourceUrl, window.location.href);
+        if (parentValue) url.searchParams.set('parent', parentValue);
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (! response.ok) throw new Error('Gagal memuat opsi ' + this.levels[index].label);
+        this.cache[key] = await response.json();
+    },
+    optionsFor(index) {
+        const parentKey = index === 0 ? '' : this.levels[index - 1].name;
+        const parentValue = index === 0 ? '' : (this.values[parentKey] || '');
+        return this.cache[index + ':' + parentValue] ?? [];
+    },
+    async onChange(index) {
+        for (let i = index + 1; i < this.levels.length; i++) {
+            this.values[this.levels[i].name] = '';
+        }
+        const next = index + 1;
+        if (next < this.levels.length && this.values[this.levels[index].name]) {
+            await this.ensureOptions(next);
+        }
+    },
+    async init() {
+        for (let i = 0; i < this.levels.length; i++) {
+            const hasParent = i === 0 || !!this.values[this.levels[i - 1].name];
+            if (! hasParent) break;
+            await this.ensureOptions(i);
+        }
+    },
+}));
+
+Alpine.data('eamsRepeater', (template = {}, max = null) => ({
+    rows: [{ ...template }],
+    max,
+    add() {
+        if (this.max !== null && this.rows.length >= this.max) return;
+        this.rows.push({ ...template });
+    },
+    remove(index) {
+        if (this.rows.length <= 1) return;
+        this.rows.splice(index, 1);
+    },
+}));
+
 Alpine.data('eamsDropdown', () => ({
     open: false,
     toggle() {
