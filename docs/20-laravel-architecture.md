@@ -287,7 +287,7 @@ Status terkini (commit `52624fa0`, run `#33159492849`): `php artisan test` **199
 | Page-by-page blueprint + page map | Implemented — docs/21 BP.0–BP.28 + docs/22 (`a65d104c`) |
 | Inventory | Active — migrasi Livewire/Tailwind ter-commit (`eb44a20e`); menunggu 2 skenario browser QA hijau |
 | Checklist STANDARD/GRID | Pending — berikutnya sesuai urutan BP.28 |
-| Other modules | Pending |
+| Other modules | Pending — Calendar implemented; Progress per-PIC rebuilt (legacy logic, pivot PIC); Evidence/Ranking next |
 | Bootstrap removal | Last |
 
 ## 29. Known issues

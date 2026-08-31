@@ -154,7 +154,9 @@ Pattern ini menjadi acuan presentation boundary, bukan alasan memindahkan busine
 | Bootstrap legacy | Remaining, guarded | Modal regression lulus; dipertahankan untuk halaman legacy |
 | Dashboard | Implemented | Livewire presentation boundary + Tailwind + Alpine + `wire:navigate` |
 | Inventory | Next | Milestone aktif berikutnya |
-| Checklist standard/grid | Pending | Setelah Inventory |
+| Checklist standard/grid | Implemented | Fill BP.7 + Grid BP.8 (Livewire/Alpine, POST contract preserved) |
+| Calendar | Implemented | Livewire full-page; offday hook data-offday |
+| Progress | Implemented | Per-PIC monthly (legacy logic), export CSV, remind in-app |
 | Modul lain | Pending | Bertahap |
 | Bootstrap removal | Last | Hanya setelah replacement lengkap |
 

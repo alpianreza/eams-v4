@@ -32,14 +32,73 @@ class ProgressDashboardTest extends TestCase
         return $inv;
     }
 
-    public function test_progress_shows_current_period_status(): void
+    public function test_progress_page_lists_pic_rows_sorted_with_monthly_aggregates(): void
     {
-        Carbon::setTestNow('2026-08-19 09:00:00'); // a Wednesday (working day)
-        $inv = $this->makeInventory();
-        $user = User::factory()->create(['permission' => 'write']);
+        Carbon::setTestNow('2026-08-19 09:00:00'); // Wednesday, working day
+        $pic = User::factory()->create(['permission' => 'write', 'name' => 'Budi Santoso', 'status' => 'active']);
+        $this->makeInventory([$pic->id]);
 
-        // no log today → OPEN
-        $this->actingAs($user)->get(route('progress.index'))->assertOk()->assertSee($inv->asset_code);
+        // A user without PIC inventories is skipped (legacy behavior).
+        $bystander = User::factory()->create(['permission' => 'write', 'name' => 'Cici', 'status' => 'active']);
+
+        $this->actingAs($bystander)->get(route('progress.index', ['month' => '2026-08']))
+            ->assertOk()
+            ->assertSee('Budi Santoso')
+            ->assertDontSee('data-eams-progress-row="' . $bystander->id . '"', false);
+    }
+
+    public function test_progress_counts_done_after_log_posted_via_standard_channel(): void
+    {
+        Carbon::setTestNow('2026-08-19 09:00:00');
+        $pic = User::factory()->create(['permission' => 'write', 'name' => 'Budi', 'status' => 'active']);
+        $inv = $this->makeInventory([$pic->id]);
+        $q = ChecklistMaster::where('asset_item_type_id', $inv->asset_item_type_id)->first();
+
+        // done=1 of the working days so far in August 2026 (13 non-offday days up to the 19th) => 8%
+        $this->actingAs($pic)->post(route('compliance.checklist.store', $inv), ["status_{$q->id}" => 'ok']);
+
+        $this->actingAs($pic)->get(route('progress.index', ['month' => '2026-08']))
+            ->assertOk()
+            ->assertSee('8%');
+    }
+
+    public function test_progress_export_downloads_csv(): void
+    {
+        Carbon::setTestNow('2026-08-19 09:00:00');
+        $pic = User::factory()->create(['permission' => 'write', 'name' => 'Budi', 'status' => 'active']);
+        $inv = $this->makeInventory([$pic->id]);
+        $q = ChecklistMaster::where('asset_item_type_id', $inv->asset_item_type_id)->first();
+        $this->actingAs($pic)->post(route('compliance.checklist.store', $inv), ["status_{$q->id}" => 'ok']);
+
+        $this->actingAs($pic)->get(route('progress.export', ['month' => '2026-08']))
+            ->assertOk()
+            ->assertDownload('progress-2026-08.csv')
+            ->assertSee('Budi');
+    }
+
+    public function test_remind_creates_in_app_notification_for_pic(): void
+    {
+        Carbon::setTestNow('2026-08-19 09:00:00');
+        $admin = User::factory()->create(['role' => 'admin', 'permission' => 'write']);
+        $pic = User::factory()->create(['permission' => 'write', 'name' => 'Budi', 'status' => 'active']);
+        $this->makeInventory([$pic->id]); // no logs -> pending exists
+
+        $this->actingAs($admin)->post(route('progress.remind', $pic), ['month' => '2026-08'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $pic->id,
+            'type' => 'warning',
+        ]);
+    }
+
+    public function test_remind_forbidden_for_read_only_user(): void
+    {
+        $reader = User::factory()->create(['role' => 'compliance', 'permission' => 'read']);
+        $target = User::factory()->create(['status' => 'active']);
+
+        $this->actingAs($reader)->post(route('progress.remind', $target), ['month' => '2026-08'])
+            ->assertForbidden();
     }
 
     public function test_dashboard_kpi_counts(): void
@@ -58,7 +117,7 @@ class ProgressDashboardTest extends TestCase
         $pic = User::factory()->create(['permission' => 'write', 'name' => 'Budi', 'status' => 'active']);
         $inv = $this->makeInventory([$pic->id]);
 
-        // the PIC has a pending daily checklist today → appears on home
+        // the PIC has a pending daily checklist today -> appears on home
         $this->actingAs($pic)->get(route('home'))->assertOk()->assertSee($inv->asset_code);
     }
 

@@ -81,6 +81,8 @@ Route::middleware('auth')->group(function () {
 
     // Monitoring layer (§7).
     Route::get('compliance/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('compliance/progress/export', [ProgressController::class, 'export'])->name('progress.export');
+    Route::post('compliance/progress/{user}/remind', [ProgressController::class, 'remind'])->name('progress.remind')->middleware('can:write');
     Route::get('compliance/progress', [ProgressController::class, 'index'])->name('progress.index');
     Route::get('compliance/evidence', [EvidenceController::class, 'index'])->name('evidence.index');
     Route::put('compliance/evidence/{log}/followup', [EvidenceController::class, 'updateFollowup'])->name('evidence.followup');
