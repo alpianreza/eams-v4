@@ -1,23 +1,15 @@
-<div class="card border-0 shadow-sm">
-    <div class="card-body">
-
-        <h5>Print Per Inventory</h5>
-        <p class="text-muted mb-3">Pilih item type, lalu klik "Print" pada inventory untuk membuka PDF checklist periode berjalan.</p>
-
-        <div class="mb-3">
-            <label for="itemTypeSelect" class="form-label">Item Type</label>
-            <select id="itemTypeSelect" class="form-select">
-                <option value="">-- pilih item --</option>
-                @foreach($itemTypes as $it)
-                    <option value="{{ $it->id }}" data-frequency="{{ $it->checklist_frequency }}">{{ $it->name }}</option>
-                @endforeach
-            </select>
-        </div>
+<x-ui.card title="Print Per Inventory"
+           subtitle="Pilih item type, lalu klik Print pada inventory untuk membuka PDF checklist periode berjalan.">
+    <div class="eams:grid eams:gap-4">
+        <x-ui.select name="itemTypeSelect" id="itemTypeSelect" label="Item Type" placeholder="Pilih item">
+            @foreach($itemTypes as $it)
+                <option value="{{ $it->id }}" data-frequency="{{ $it->checklist_frequency }}">{{ $it->name }}</option>
+            @endforeach
+        </x-ui.select>
 
         <div id="inventoryContainer"></div>
-
     </div>
-</div>
+</x-ui.card>
 
 <script>
     (function () {
@@ -32,7 +24,7 @@
                 return;
             }
 
-            container.innerHTML = '<div class="text-center p-3 text-muted">Loading...</div>';
+            container.innerHTML = '<div class="eams:flex eams:items-center eams:gap-2 eams:p-3 eams:text-[13px] eams:text-muted"><span class="eams:size-3.5 eams:animate-spin eams:rounded-full eams:border-2 eams:border-current eams:border-r-transparent"></span> Memuat inventory...</div>';
 
             fetch("{{ route('print.index') }}/inventory/" + encodeURIComponent(id))
                 .then(res => {
@@ -45,7 +37,7 @@
                     container.innerHTML = html;
                 })
                 .catch(() => {
-                    container.innerHTML = '<div class="text-center p-3 text-danger">Gagal memuat inventory.</div>';
+                    container.innerHTML = '<div class="eams:rounded-eams eams:border eams:border-danger/30 eams:bg-danger-soft eams:p-3 eams:text-[13px] eams:text-danger">Gagal memuat inventory.</div>';
                 });
         });
     })();

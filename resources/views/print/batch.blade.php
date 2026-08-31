@@ -1,20 +1,11 @@
-<div class="card border-0 shadow-sm">
-    <div class="card-body">
-
-        <h5>Print Batch / Form Kolektif</h5>
-        <p class="text-muted mb-3">
-            Format ini terpisah dari laporan. Pilih item type untuk mencetak PDF kolektif beserta finding yang berstatus Tidak sesuai.
-        </p>
-
-        <div class="mb-3">
-            <label for="batchItemTypeSelect" class="form-label">Item Type</label>
-            <select id="batchItemTypeSelect" class="form-select">
-                <option value="">-- pilih item --</option>
-                @foreach($itemTypes as $it)
-                    <option value="{{ $it->id }}" data-frequency="{{ $it->checklist_frequency }}">{{ $it->name }}</option>
-                @endforeach
-            </select>
-        </div>
+<x-ui.card title="Print Batch / Form Kolektif"
+           subtitle="Pilih item type dan periode untuk mencetak PDF kolektif beserta temuan tidak sesuai.">
+    <div class="eams:grid eams:gap-4">
+        <x-ui.select name="batchItemTypeSelect" id="batchItemTypeSelect" label="Item Type" placeholder="Pilih item">
+            @foreach($itemTypes as $it)
+                <option value="{{ $it->id }}" data-frequency="{{ $it->checklist_frequency }}">{{ $it->name }}</option>
+            @endforeach
+        </x-ui.select>
 
         @php
             $monthNames = [
@@ -25,34 +16,25 @@
             $currentYear = (int) now()->year;
         @endphp
 
-        <div class="row mt-3">
-            <div class="col-md-6">
-                <label for="batchMonthSelect" class="form-label">Bulan</label>
-                <select id="batchMonthSelect" class="form-select">
-                    @foreach($monthNames as $monthNumber => $monthLabel)
-                        <option value="{{ $monthNumber }}" @selected($currentMonth === $monthNumber)>{{ $monthLabel }}</option>
-                    @endforeach
-                </select>
-            </div>
+        <div class="eams:grid eams:grid-cols-1 eams:gap-4 eams:sm:grid-cols-2">
+            <x-ui.select name="batchMonthSelect" id="batchMonthSelect" label="Bulan">
+                @foreach($monthNames as $monthNumber => $monthLabel)
+                    <option value="{{ $monthNumber }}" @selected($currentMonth === $monthNumber)>{{ $monthLabel }}</option>
+                @endforeach
+            </x-ui.select>
 
-            <div class="col-md-6">
-                <label for="batchYearSelect" class="form-label">Tahun</label>
-                <select id="batchYearSelect" class="form-select">
-                    @for($year = $currentYear - 1; $year <= $currentYear + 2; $year++)
-                        <option value="{{ $year }}" @selected($currentYear === $year)>{{ $year }}</option>
-                    @endfor
-                </select>
-            </div>
+            <x-ui.select name="batchYearSelect" id="batchYearSelect" label="Tahun">
+                @for($year = $currentYear - 1; $year <= $currentYear + 2; $year++)
+                    <option value="{{ $year }}" @selected($currentYear === $year)>{{ $year }}</option>
+                @endfor
+            </x-ui.select>
         </div>
 
-        <div class="d-flex justify-content-end mt-3">
-            <button id="btnPreviewBatchPrint" class="btn btn-primary">
-                <i class="bi bi-printer"></i> Preview Print
-            </button>
+        <div class="eams:flex eams:justify-end">
+            <x-ui.button id="btnPreviewBatchPrint" variant="primary" icon="printer">Preview Print</x-ui.button>
         </div>
-
     </div>
-</div>
+</x-ui.card>
 
 <script>
     (function () {
@@ -62,7 +44,9 @@
             const year = document.getElementById('batchYearSelect').value;
 
             if (!itemTypeId) {
-                alert('Pilih item type dulu');
+                if (typeof window.eamsToast === 'function') {
+                    window.eamsToast('Pilih item type dulu', 'warning');
+                }
                 return;
             }
 
