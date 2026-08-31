@@ -157,6 +157,7 @@ Pattern ini menjadi acuan presentation boundary, bukan alasan memindahkan busine
 | Checklist standard/grid | Implemented | Fill BP.7 + Grid BP.8 (Livewire/Alpine, POST contract preserved) |
 | Calendar | Implemented | Livewire full-page; offday hook data-offday |
 | Progress | Implemented | Per-PIC monthly (legacy logic), export CSV, remind in-app |
+| Evidence + Ranking | Implemented | Tailwind/x-ui, controller business untouched |
 | Modul lain | Pending | Bertahap |
 | Bootstrap removal | Last | Hanya setelah replacement lengkap |
 

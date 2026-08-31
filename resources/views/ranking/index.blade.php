@@ -3,31 +3,44 @@
 @section('title', 'Ranking PIC')
 
 @section('content')
-<x-page-header
-    variant="card"
-    tone="compliance"
-    eyebrow="Monitoring"
-    eyebrow-icon="bi-trophy"
-    title="Ranking PIC"
-    lead="Skor = tepat waktu ×10 + terlambat ×3."
-/>
+<div class="eams:mx-auto eams:max-w-4xl eams:space-y-4 eams:sm:space-y-5" data-eams-page="ranking">
+    <x-ui.page-header eyebrow="Monitoring" eyebrow-icon="trophy"
+                      title="Ranking PIC"
+                      lead="Skor = tepat waktu &times;10 + terlambat &times;3 (BR-18)." />
 
-<div class="card"><div class="card-body p-0">
-    <table class="table table-striped mb-0">
-        <thead><tr><th>#</th><th>PIC</th><th class="text-center">Tepat waktu</th><th class="text-center">Terlambat</th><th class="text-end">Skor</th></tr></thead>
-        <tbody>
-        @forelse($board as $i => $row)
-            <tr>
-                <td>{{ $i + 1 }}</td>
-                <td>{{ $row['name'] }}</td>
-                <td class="text-center">{{ $row['ontime'] }}</td>
-                <td class="text-center">{{ $row['late'] }}</td>
-                <td class="text-end fw-bold">{{ $row['score'] }}</td>
-            </tr>
-        @empty
-            <tr><td colspan="5" class="text-center text-muted py-4">Belum ada data.</td></tr>
-        @endforelse
-        </tbody>
-    </table>
-</div></div>
+    @if($board === [])
+        <x-ui.empty-state icon="trophy" title="Belum ada data"
+                          description="Skor ranking akan muncul setelah ada checklist yang diisi." />
+    @else
+        <x-ui.table label="Peringkat PIC" striped>
+            <thead>
+                <tr>
+                    <th scope="col" class="eams:w-14">#</th>
+                    <th scope="col">PIC</th>
+                    <th scope="col" class="eams:text-center">Tepat waktu</th>
+                    <th scope="col" class="eams:text-center">Terlambat</th>
+                    <th scope="col" class="eams:text-right">Skor</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach($board as $i => $row)
+                @php($rank = $i + 1)
+                <tr wire:key="rank-{{ $rank }}" data-eams-rank="{{ $rank }}">
+                    <td>
+                        @if($rank <= 3)
+                            <x-ui.badge :variant="match ($rank) { 1 => 'success', 2 => 'info', default => 'neutral' }" size="sm">{{ $rank }}</x-ui.badge>
+                        @else
+                            <span class="eams:text-sm eams:text-muted">{{ $rank }}</span>
+                        @endif
+                    </td>
+                    <td class="eams:text-[13px] eams:font-semibold eams:text-ink">{{ $row['name'] }}</td>
+                    <td class="eams:text-center eams:tabular-nums eams:text-success">{{ $row['ontime'] }}</td>
+                    <td class="eams:text-center eams:tabular-nums {{ $row['late'] > 0 ? 'eams:text-danger' : '' }}">{{ $row['late'] }}</td>
+                    <td class="eams:text-right eams:font-extrabold eams:tabular-nums eams:text-ink">{{ $row['score'] }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+        </x-ui.table>
+    @endif
+</div>
 @endsection
