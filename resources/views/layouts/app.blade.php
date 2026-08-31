@@ -1,4 +1,4 @@
-@php($pageTitle = trim($__env->yieldContent('title', 'Beranda')) ?: 'Beranda')
+@php($pageTitle = trim($__env->yieldContent('title', $title ?? 'Beranda')) ?: 'Beranda')
 <!DOCTYPE html>
 <html lang="id" data-bs-theme="light" data-eams-accent="indigo">
 <head>

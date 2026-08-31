@@ -43,7 +43,7 @@ class CalendarTest extends TestCase
     {
         // 2026-08-15 is a Saturday (after the 2026-04-01 effective date), 2026-08-16 a Sunday.
         $this->actingAs($this->writer())->get(route('calendar.index', ['month' => '2026-08']))
-            ->assertOk()->assertSee('table-secondary', false); // offday cells shaded
+            ->assertOk()->assertSee('data-offday="true"', false); // offday cells shaded (eams calendar)
     }
 
     public function test_read_only_user_cannot_create_event(): void

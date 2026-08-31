@@ -71,7 +71,7 @@
                             @foreach($week as $day)
                                 <td class="eams:relative eams:p-1 eams:align-top
                                     @if($day['offday']) eams:bg-surface-sunk @elseif(! $day['in_month']) eams:text-muted @endif
-                                    @if($day['today']) eams:ring-2 eams:ring-brand @endif">
+                                    @if($day['today']) eams:ring-2 eams:ring-brand @endif" @if($day['offday']) data-offday="true" @endif>
                                     <div class="eams:flex eams:items-center eams:justify-between">
                                         <span class="eams:text-xs eams:font-medium @if($day['offday']) eams:text-danger @endif">{{ $day['day'] }}</span>
                                         @if($day['holiday'])

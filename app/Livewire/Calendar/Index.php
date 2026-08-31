@@ -56,7 +56,10 @@ class Index extends Component
             'monthStart' => $monthStart,
             'weeks' => $weeks,
             'hasWriteAccess' => auth()->user()?->hasWriteAccess() ?? false,
-        ]);
+        ])
+            ->title('Kalender Compliance')
+            ->section('content')
+            ->extends('layouts.app');
     }
 
     /** Build the month grid (weeks of days) with offday + holiday + event info. */
@@ -73,11 +76,6 @@ class Index extends Component
                 $dateStr = $date->toDateString();
 
                 $today = $date->format('Y-m-d') === $now->format('Y-m-d');
-                $periodKey = ChecklistPeriod::periodKey(ChecklistPeriod::FREQ_DAILY, $date);
-                $hasResults = ChecklistPeriod::status(ChecklistPeriod::FREQ_DAILY, $date, true, $now) === ChecklistPeriod::STATUS_DONE;
-
-                // For today: check if there are actual logs
-                // We approximate 'done' based on date being in past
                 $hasResults = ! $date->isFuture() && $date->lt($now);
 
                 $status = ChecklistPeriod::status(ChecklistPeriod::FREQ_DAILY, $date, $hasResults, $now);
