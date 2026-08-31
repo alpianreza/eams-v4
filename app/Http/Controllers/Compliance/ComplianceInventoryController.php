@@ -6,14 +6,18 @@ use App\Actions\Compliance\GenerateAssetCode;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
 use App\Models\AssetItemType;
+use App\Models\ChecklistLog;
 use App\Models\ComplianceInventory;
 use App\Models\InventoryCategory;
 use App\Models\User;
 use App\Services\FileStorage;
 use App\Services\QrService;
+use App\Support\Checklist\ChecklistPeriod;
 use App\Support\Uploads\ImageUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -71,7 +75,61 @@ class ComplianceInventoryController extends Controller
     {
         $inventory->load(['category', 'itemType', 'area', 'pics']);
 
-        return view('compliance.inventory.show', ['inventory' => $inventory]);
+        // Period history (detail v2): one aggregated row per period, latest first.
+        $frequency = $inventory->itemType->checklist_frequency ?? 'monthly';
+        $history = ChecklistLog::query()
+            ->where('inventory_id', $inventory->id)
+            ->select(
+                'period_key',
+                DB::raw('COUNT(*) as total'),
+                DB::raw("SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) as ok_count"),
+                DB::raw("SUM(CASE WHEN status = 'not_ok' THEN 1 ELSE 0 END) as not_ok_count"),
+                DB::raw("SUM(CASE WHEN status = 'na' THEN 1 ELSE 0 END) as na_count"),
+                DB::raw('MAX(check_date) as last_check'),
+                DB::raw('MAX(checked_by_name) as last_checker')
+            )
+            ->groupBy('period_key')
+            ->orderByDesc('period_key')
+            ->limit(24)
+            ->get()
+            ->map(function ($row) {
+                $row->date = $this->periodAnchorDate($row->period_key);
+                $row->frequency = $this->periodFrequency($row->period_key);
+
+                return $row;
+            });
+
+        // Current-period quick status for the fill CTA.
+        $currentKey = ChecklistPeriod::periodKey($frequency, Carbon::now());
+        $currentFilled = $history->firstWhere('period_key', $currentKey) !== null;
+
+        return view('compliance.inventory.show', [
+            'inventory' => $inventory,
+            'history' => $history,
+            'currentKey' => $currentKey,
+            'currentFilled' => $currentFilled,
+        ]);
+    }
+
+    /** Anchor date of a period_key (daily = itself, weekly = first day of its slice, monthly = month start). */
+    protected function periodAnchorDate(string $periodKey): Carbon
+    {
+        if (preg_match('/^(\d{4}-\d{2})-W(\d)$/', $periodKey, $m)) {
+            $startDay = ((int) $m[2] - 1) * 7 + 1;
+
+            return Carbon::parse($m[1].'-'.str_pad((string) $startDay, 2, '0', STR_PAD_LEFT));
+        }
+
+        return Carbon::parse($periodKey);
+    }
+
+    protected function periodFrequency(string $periodKey): string
+    {
+        return match (true) {
+            preg_match('/^\d{4}-\d{2}-\d{2}$/', $periodKey) => 'daily',
+            preg_match('/^\d{4}-\d{2}-W\d$/', $periodKey) => 'weekly',
+            default => 'monthly',
+        };
     }
 
     public function edit(ComplianceInventory $inventory): View

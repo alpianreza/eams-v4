@@ -30,6 +30,9 @@
                     Edit inventory
                 </x-ui.button>
             @endcan
+            <x-ui.button :href="route('compliance.checklist.fill', $inventory)" navigate variant="secondary" icon="clipboard2-check">
+                Isi checklist
+            </x-ui.button>
         </div>
     </header>
 
@@ -144,6 +147,39 @@
                         </dd>
                     </div>
                 </dl>
+            </x-ui.card>
+
+            <x-ui.card title="Riwayat checklist" subtitle="Agregat hasil per periode (maks. 24 periode terakhir).">
+                @if($history->isEmpty())
+                    <p class="eams:m-0 eams:text-sm eams:text-subtle">Belum ada checklist yang diisi untuk inventory ini.</p>
+                @else
+                    <x-ui.table label="Riwayat periode checklist" compact>
+                        <thead>
+                            <tr>
+                                <th scope="col">Periode</th>
+                                <th scope="col">Frekuensi</th>
+                                <th scope="col" class="eams:text-center">OK</th>
+                                <th scope="col" class="eams:text-center">NOT OK</th>
+                                <th scope="col" class="eams:text-center">NA</th>
+                                <th scope="col">Terakhir diisi</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($history as $row)
+                                <tr wire:key="history-{{ $row->period_key }}">
+                                    <td class="eams:font-mono eams:text-[12px]">{{ $row->period_key }}</td>
+                                    <td class="eams:text-[12px] eams:capitalize">{{ $row->frequency }}</td>
+                                    <td class="eams:text-center eams:tabular-nums eams:text-success">{{ $row->ok_count }}</td>
+                                    <td class="eams:text-center eams:tabular-nums {{ $row->not_ok_count > 0 ? 'eams:text-danger eams:font-semibold' : '' }}">{{ $row->not_ok_count }}</td>
+                                    <td class="eams:text-center eams:tabular-nums">{{ $row->na_count }}</td>
+                                    <td class="eams:text-[12px] eams:tabular-nums">{{ \Illuminate\Support\Carbon::parse($row->last_check)->format('d/m/Y H:i') }} <span class="eams:text-subtle">{{ $row->last_checker }}</span></td>
+                                    <td><x-ui.status-indicator status="DONE" size="sm" /></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </x-ui.table>
+                @endif
             </x-ui.card>
 
             <x-ui.card title="Catatan">
