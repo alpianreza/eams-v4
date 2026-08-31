@@ -4,6 +4,8 @@
     'disabled' => false,
     'title' => null,
     'active' => false,
+    'href' => null,
+    'navigate' => true,
 ])
 
 
@@ -26,6 +28,10 @@ $chipClasses = 'eams:inline-flex eams:min-h-9 eams:items-center eams:gap-1.5 eam
     <span {{ $attributes->class([$chipClasses]) }}
           @if($title) title="{{ $title }}" @endif
           aria-disabled="true" data-status="{{ $presentation['key'] }}" data-eams-component="period-chip">{{ $label ?? $presentation['label'] }}</span>
+@elseif($href)
+    <a href="{{ $href }}" @if($navigate) wire:navigate @endif {{ $attributes->class([$chipClasses, 'eams:no-underline']) }}
+       @if($title) title="{{ $title }}" @endif
+       data-status="{{ $presentation['key'] }}" data-eams-component="period-chip">{{ $label ?? $presentation['label'] }}</a>
 @else
     <button type="button" {{ $attributes->class([$chipClasses]) }}
             @if($title) title="{{ $title }}" @endif

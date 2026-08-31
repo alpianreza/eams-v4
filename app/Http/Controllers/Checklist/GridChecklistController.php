@@ -59,7 +59,7 @@ class GridChecklistController extends Controller
                     'status' => $status,
                     'remark' => null,
                     'photo' => null,
-                    'time_slot' => null,
+                    'time_slot' => $request->input("slot_{$inventory->id}"),
                 ];
             }
             if ($answers !== []) {
@@ -73,14 +73,14 @@ class GridChecklistController extends Controller
     public function markAll(Request $request, AssetItemType $itemType): RedirectResponse
     {
         $status = (string) $request->input('status', 'ok');
-        $written = SaveGridChecklist::markAll($itemType, $status, $request->user());
+        $written = SaveGridChecklist::markAll($itemType, $status, $request->user(), timeSlot: $request->input('time_slot'));
 
         return back()->with('status', "Mark-all mengisi {$written} sel kosong.");
     }
 
-    public function clear(AssetItemType $itemType): RedirectResponse
+    public function clear(Request $request, AssetItemType $itemType): RedirectResponse
     {
-        $deleted = SaveGridChecklist::clear($itemType);
+        $deleted = SaveGridChecklist::clear($itemType, timeSlot: $request->input('time_slot'));
 
         return back()->with('status', "Clear menghapus {$deleted} sel.");
     }

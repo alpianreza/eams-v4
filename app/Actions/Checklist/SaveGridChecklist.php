@@ -8,6 +8,7 @@ use App\Models\ChecklistMaster;
 use App\Models\ComplianceInventory;
 use App\Models\User;
 use App\Support\Checklist\ChecklistPeriod;
+use App\Support\Checklist\ChecklistSlot;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -25,9 +26,10 @@ class SaveGridChecklist
     }
 
     /** BR-15: mark-all fills ONLY empty cells for the current period — never overwrites. */
-    public static function markAll(AssetItemType $itemType, string $status, User $checker, ?Carbon $now = null): int
+    public static function markAll(AssetItemType $itemType, string $status, User $checker, ?Carbon $now = null, ?string $timeSlot = null): int
     {
         $now = ($now ?? Carbon::now())->copy();
+        $timeSlot = ChecklistSlot::normalize($itemType, $timeSlot);
 
         if (! in_array($status, ChecklistLog::STATUSES, true)) {
             throw ValidationException::withMessages(['status' => 'Status tidak valid.']);
@@ -48,7 +50,7 @@ class SaveGridChecklist
                 $exists = ChecklistLog::where('inventory_id', $inventory->id)
                     ->where('checklist_master_id', $q->id)
                     ->where('period_key', $periodKey)
-                    ->whereNull('time_slot')
+                    ->when($timeSlot === null, fn ($query) => $query->whereNull('time_slot'), fn ($query) => $query->where('time_slot', $timeSlot))
                     ->exists();
 
                 if ($exists) {
@@ -61,7 +63,7 @@ class SaveGridChecklist
                     'checklist_master_id' => $q->id,
                     'check_date' => $now->toDateString(),
                     'period_key' => $periodKey,
-                    'time_slot' => null,
+                    'time_slot' => $timeSlot,
                     'status' => $status,
                     'checked_by_user_id' => $checker->id,
                     'checked_by_name' => $checker->name,
@@ -75,14 +77,16 @@ class SaveGridChecklist
     }
 
     /** BR-16: clear removes the current period's grid cells for the item type. */
-    public static function clear(AssetItemType $itemType, ?Carbon $now = null): int
+    public static function clear(AssetItemType $itemType, ?Carbon $now = null, ?string $timeSlot = null): int
     {
         $now = ($now ?? Carbon::now())->copy();
+        $timeSlot = ChecklistSlot::normalize($itemType, $timeSlot);
         $periodKey = ChecklistPeriod::periodKey($itemType->checklist_frequency, $now);
 
         return ChecklistLog::where('asset_item_type_id', $itemType->id)
             ->where('period_key', $periodKey)
             ->where('mode', 'grid')
+            ->when($timeSlot === null, fn ($query) => $query->whereNull('time_slot'), fn ($query) => $query->where('time_slot', $timeSlot))
             ->delete();
     }
 }
