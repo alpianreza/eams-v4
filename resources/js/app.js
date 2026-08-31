@@ -280,6 +280,65 @@ Alpine.data('eamsDropdown', () => ({
     },
 }));
 
+/* DataGrid: penanganan fokus keyboard (Arrow navigation, Enter/Space activation, Escape). */
+Alpine.data('eamsDataGrid', () => ({
+    activeCell: null,
+    getInteractiveCells() {
+        return Array.from(this.$el.querySelectorAll('[data-grid-cell]')).filter(
+            (cell) => ! cell.hasAttribute('data-locked') && cell.offsetWidth > 0
+        );
+    },
+    onKeydown(event) {
+        if (! ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(event.key)) {
+            return;
+        }
+
+        const target = event.target instanceof Element ? event.target.closest('[data-grid-cell]') : null;
+        if (! target) {
+            return;
+        }
+
+        const cells = this.getInteractiveCells();
+        const index = cells.indexOf(target);
+        if (index === -1) {
+            return;
+        }
+
+        const tr = target.closest('tr');
+        const rowCells = tr ? Array.from(tr.querySelectorAll('[data-grid-cell]')).filter((c) => cells.includes(c)) : [];
+        const colIndex = rowCells.indexOf(target);
+
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            const next = cells[index + 1] ?? cells[0];
+            next?.focus();
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            const prev = cells[index - 1] ?? cells[cells.length - 1];
+            prev?.focus();
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const rows = Array.from(this.$el.querySelectorAll('tr')).filter((r) => r.querySelector('[data-grid-cell]'));
+            const currentRowIndex = rows.indexOf(tr);
+            const nextRow = rows[currentRowIndex + 1];
+            const nextCell = nextRow ? Array.from(nextRow.querySelectorAll('[data-grid-cell]'))[colIndex] : null;
+            (nextCell && cells.includes(nextCell) ? nextCell : cells[index + 1])?.focus();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            const rows = Array.from(this.$el.querySelectorAll('tr')).filter((r) => r.querySelector('[data-grid-cell]'));
+            const currentRowIndex = rows.indexOf(tr);
+            const prevRow = rows[currentRowIndex - 1];
+            const prevCell = prevRow ? Array.from(prevRow.querySelectorAll('[data-grid-cell]'))[colIndex] : null;
+            (prevCell && cells.includes(prevCell) ? prevCell : cells[index - 1])?.focus();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            target.dispatchEvent(new CustomEvent('eams-data-grid-activate', { bubbles: true, detail: { cell: target } }));
+        } else if (event.key === 'Escape') {
+            target.blur();
+        }
+    },
+}));
+
 /* -----------------------------------------------------------------------------
  * Navigasi: wire:navigate menjadi jalur utama. Interceptor klasik dipertahankan
  * hanya sebagai fallback untuk link GET internal yang belum dimigrasikan.

@@ -106,7 +106,7 @@ Route::middleware('auth')->group(function () {
         Route::post('backups/prune', [BackupController::class, 'prune'])->name('backups.prune');
     });
 
-    Route::get('compliance/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::get('compliance/calendar', \App\Livewire\Calendar\Index::class)->name('calendar.index');
     Route::post('compliance/calendar', [CalendarController::class, 'store'])->name('calendar.store');
     Route::delete('compliance/calendar/{event}', [CalendarController::class, 'destroy'])->name('calendar.destroy');
 

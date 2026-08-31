@@ -7,6 +7,7 @@ use App\Models\ChecklistLog;
 use App\Models\ComplianceInventory;
 use App\Models\User;
 use App\Support\Checklist\ChecklistPeriod;
+use App\Support\Checklist\ChecklistSlot;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -45,12 +46,14 @@ class SubmitChecklist
 
             self::guardStatus($itemType, (string) $status, $remark, $photo, $mode);
 
+            $timeSlot = ChecklistSlot::normalize($itemType, $answer['time_slot'] ?? null);
+
             ChecklistLog::updateOrCreate(
                 [
                     'inventory_id' => $inventory->id,
                     'checklist_master_id' => $answer['checklist_master_id'],
                     'period_key' => $periodKey,
-                    'time_slot' => $answer['time_slot'] ?? null,
+                    'time_slot' => $timeSlot,
                 ],
                 [
                     'asset_item_type_id' => $itemType->id,

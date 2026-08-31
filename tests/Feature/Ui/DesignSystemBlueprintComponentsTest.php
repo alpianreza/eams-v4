@@ -158,6 +158,55 @@ class DesignSystemBlueprintComponentsTest extends TestCase
         $this->assertStringContainsString('x-model="values[level.name]"', $html);
     }
 
+    public function test_period_strip_renders_month_nav_and_chips_with_navigation_and_locked_states(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-ui.period-strip :month="8" :year="2026" frequency="Weekly"
+                prev-url="/p?m=7" next-url="/p?m=9" current-key="2026-08-W2"
+                :periods="[
+                    ['key' => '2026-08-W1', 'label' => 'W1', 'status' => 'DONE', 'editable' => false, 'reason' => 'Selesai'],
+                    ['key' => '2026-08-W2', 'label' => 'W2', 'status' => 'OPEN', 'editable' => true, 'url' => '/fill?p=W2'],
+                    ['key' => '2026-08-W3', 'label' => 'W3', 'status' => 'FUTURE', 'editable' => false, 'reason' => 'Belum dibuka'],
+                ]" />
+        BLADE);
+
+        $this->assertStringContainsString('data-eams-component="period-strip"', $html);
+        $this->assertStringContainsString('Weekly', $html);
+        $this->assertStringContainsString('Agustus 2026', $html);
+        $this->assertStringContainsString('href="/fill?p=W2"', $html);
+        $this->assertStringContainsString('wire:navigate', $html);
+        $this->assertStringContainsString('title="Selesai"', $html);
+        $this->assertStringContainsString('title="Belum dibuka"', $html);
+        $this->assertStringContainsString('aria-disabled="true"', $html);
+    }
+
+    public function test_data_grid_renders_headers_sticky_columns_and_empty_state(): void
+    {
+        $grid = Blade::render(<<<'BLADE'
+            <x-ui.data-grid :headers="[
+                ['label' => 'Aset', 'scope' => 'col'],
+                ['label' => 'Senin 24', 'scope' => 'col'],
+                ['label' => 'Sabtu 29 (Libur)', 'scope' => 'col', 'offday' => true],
+            ]" label="Matriks Test">
+                <tr>
+                    <td>Aset 1</td>
+                    <td data-grid-cell tabindex="0">OK</td>
+                    <td data-grid-cell data-locked tabindex="-1">Libur</td>
+                </tr>
+            </x-ui.data-grid>
+        BLADE);
+
+        $this->assertStringContainsString('data-eams-component="data-grid"', $html = $grid);
+        $this->assertStringContainsString('aria-label="Matriks Test"', $html);
+        $this->assertStringContainsString('Aset', $html);
+        $this->assertStringContainsString('data-offday', $html);
+        $this->assertStringContainsString('eams:sticky', $html);
+        $this->assertStringContainsString('data-grid-cell', $html);
+
+        $empty = Blade::render('<x-ui.data-grid :headers="[\'Col 1\', \'Col 2\']" empty-text="Tidak ada inventaris." />');
+        $this->assertStringContainsString('Tidak ada inventaris.', $empty);
+    }
+
     public function test_new_components_never_emit_bootstrap_hooks_or_svg(): void
     {
         $html = Blade::render(<<<'BLADE'
@@ -166,6 +215,8 @@ class DesignSystemBlueprintComponentsTest extends TestCase
             <x-ui.stat-card label="L" :value="1" />
             <x-ui.period-chip status="OPEN" label="P" />
             <x-ui.month-nav :month="1" :year="2026" prev-url="/p" next-url="/n" />
+            <x-ui.period-strip :month="1" :year="2026" :periods="[['key' => '1', 'status' => 'OPEN']]" />
+            <x-ui.data-grid :headers="['A']" />
             <x-ui.progress :value="3" :max="10" />
             <x-ui.timeline :items="[['title' => 'A']]" />
             <x-ui.repeater name="r" />

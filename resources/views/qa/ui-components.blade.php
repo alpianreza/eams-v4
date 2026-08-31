@@ -35,6 +35,40 @@
         </x-ui.card>
     </div>
 
+    <x-ui.card title="PeriodStrip Showcase">
+        <x-ui.period-strip :month="8" :year="2026" frequency="Weekly"
+            prev-url="/qa/ui-components?m=7" next-url="/qa/ui-components?m=9"
+            current-key="2026-08-W2"
+            :periods="[
+                ['key' => '2026-08-W1', 'label' => 'W1', 'status' => 'DONE', 'editable' => false, 'reason' => 'Periode selesai'],
+                ['key' => '2026-08-W2', 'label' => 'W2', 'status' => 'OPEN', 'editable' => true, 'url' => '#w2'],
+                ['key' => '2026-08-W3', 'label' => 'W3', 'status' => 'LATE', 'editable' => true, 'url' => '#w3'],
+                ['key' => '2026-08-W4', 'label' => 'W4', 'status' => 'FUTURE', 'editable' => false, 'reason' => 'Periode mendatang'],
+            ]" data-qa="period-strip-showcase" />
+    </x-ui.card>
+
+    <x-ui.card title="DataGrid Showcase">
+        <x-ui.data-grid :headers="[
+            ['label' => 'Inventory', 'scope' => 'col'],
+            ['label' => 'Senin 24/08', 'scope' => 'col'],
+            ['label' => 'Selasa 25/08', 'scope' => 'col'],
+            ['label' => 'Sabtu 29/08 (Libur)', 'scope' => 'col', 'offday' => true],
+        ]" label="Matriks QA DataGrid" data-qa="datagrid-showcase">
+            <tr>
+                <th scope="row" class="eams:font-semibold eams:text-ink">APAR-FOAM-001</th>
+                <td class="eams:bg-success-soft/30 eams:text-success" data-grid-cell tabindex="0" role="button">
+                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i> OK
+                </td>
+                <td class="eams:bg-danger-soft/30 eams:text-danger" data-grid-cell tabindex="0" role="button">
+                    <i class="bi bi-x-circle-fill" aria-hidden="true"></i> NOT OK
+                </td>
+                <td class="eams:bg-surface-sunk eams:text-subtle" data-grid-cell data-locked tabindex="-1" title="Hari libur">
+                    <i class="bi bi-dash-circle-fill" aria-hidden="true"></i> -
+                </td>
+            </tr>
+        </x-ui.data-grid>
+    </x-ui.card>
+
     <x-ui.alert tone="info" title="Coexistence gate">Halaman ini memakai shell Tailwind sementara browser QA juga memeriksa modal Bootstrap pada halaman User legacy.</x-ui.alert>
 </div>
 
