@@ -1,73 +1,74 @@
 @extends('layouts.app')
 
-@section('title', 'Item Type — Master Data')
+@section('title', 'Item Types - Master Data')
 
 @section('content')
-<x-page-header
-    variant="card"
-    tone="utility"
-    eyebrow="Master Data"
-    eyebrow-icon="bi-list-check"
-    title="Asset Item Type"
-/>
+<div class="eams:mx-auto eams:max-w-5xl eams:space-y-4" data-eams-page="master-item-types">
+    <x-ui.page-header eyebrow="Master Data" eyebrow-icon="list-check" title="Item Types"
+                      lead="Jenis inventory beserta frekuensi checklist-nya (kode dipakai asset_code dan resolusi perilaku, Q-015)." />
 
-@can('manage-master-data')
-<div class="card mb-4"><div class="card-body">
-    <form method="POST" action="{{ route('master-data.item-types.store') }}" class="row g-2">
-        @csrf
-        <div class="col-md-3">
-            <select name="inventory_category_id" class="form-select" required>
-                <option value="">— Kategori —</option>
-                @foreach($categories as $category)
-                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Nama item (mis. APAR)" required></div>
-        <div class="col-md-2"><input type="text" name="code" class="form-control" placeholder="Kode (APAR)" required></div>
-        <div class="col-md-2">
-            <select name="checklist_frequency" class="form-select" required>
-                <option value="daily">Harian</option>
-                <option value="weekly">Mingguan</option>
-                <option value="monthly" selected>Bulanan</option>
-            </select>
-        </div>
-        <div class="col-md-1 form-check align-self-center">
-            <input type="checkbox" name="allow_na" value="1" class="form-check-input" id="allow_na">
-            <label for="allow_na" class="form-check-label">NA?</label>
-        </div>
-        <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">Tambah</button></div>
-    </form>
-    <div class="form-text mt-2"><code>code</code> adalah business identifier (dipakai logika, bukan id auto-increment).</div>
-</div></div>
-@endcan
+    @can('manage-master-data')
+        <x-ui.card>
+            <form method="POST" action="{{ route('master-data.item-types.store') }}" class="eams:grid eams:gap-3 eams:md:grid-cols-2 eams:xl:grid-cols-3">
+                @csrf
+                <x-ui.select name="inventory_category_id" label="Kategori" placeholder="Pilih kategori" required>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                    @endforeach
+                </x-ui.select>
+                <x-ui.input name="name" label="Nama item" placeholder="mis. APAR" required />
+                <x-ui.input name="code" label="Kode" placeholder="APAR" required />
+                <x-ui.select name="checklist_frequency" label="Frekuensi checklist" required>
+                    <option value="daily">Harian</option>
+                    <option value="weekly">Mingguan</option>
+                    <option value="monthly">Bulanan</option>
+                </x-ui.select>
+                <div class="eams:flex eams:items-end eams:gap-4 eams:md:col-span-2 eams:xl:col-span-1">
+                    <x-ui.checkbox name="allow_na" label="Izinkan NA" hint="Q-001: NA hanya bila diizinkan item type." />
+                </div>
+                <div class="eams:flex eams:items-end eams:md:col-span-2 eams:xl:col-span-1">
+                    <x-ui.button type="submit" variant="primary" icon="plus-lg">Tambah</x-ui.button>
+                </div>
+            </form>
+        </x-ui.card>
+    @endcan
 
-<div class="card"><div class="card-body p-0">
-    <table class="table table-striped mb-0">
-        <thead><tr><th>Nama</th><th>Kode</th><th>Kategori</th><th>Frekuensi</th><th>NA</th>@can('manage-master-data')<th class="text-end">Aksi</th>@endcan</tr></thead>
-        <tbody>
-        @forelse($itemTypes as $type)
+    <x-ui.table label="Daftar item type">
+        <thead>
             <tr>
-                <td>{{ $type->name }}</td>
-                <td><code>{{ $type->code }}</code></td>
-                <td>{{ $type->category->name ?? '—' }}</td>
-                <td>{{ $type->checklist_frequency }}</td>
-                <td>{{ $type->allow_na ? 'Ya' : 'Tidak' }}</td>
-                @can('manage-master-data')
-                <td class="text-end">
-                    <form method="POST" action="{{ route('master-data.item-types.destroy', $type) }}" class="d-inline" onsubmit="return confirm('Hapus item type ini?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-                    </form>
-                </td>
-                @endcan
+                <th scope="col">Nama</th>
+                <th scope="col">Kode</th>
+                <th scope="col">Kategori</th>
+                <th scope="col">Frekuensi</th>
+                <th scope="col">NA</th>
+                @can('manage-master-data')<th scope="col" class="eams:text-right">Aksi</th>@endcan
             </tr>
-        @empty
-            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada item type.</td></tr>
-        @endforelse
+        </thead>
+        <tbody>
+            @forelse($itemTypes as $type)
+                <tr wire:key="item-type-{{ $type->id }}">
+                    <td class="eams:text-[13px] eams:font-semibold eams:text-ink">{{ $type->name }}</td>
+                    <td class="eams:font-mono eams:text-[13px] eams:text-muted">{{ $type->code }}</td>
+                    <td class="eams:text-[13px] eams:text-muted">{{ $type->category->name ?? '-' }}</td>
+                    <td class="eams:text-[13px] eams:capitalize eams:text-muted">{{ $type->checklist_frequency }}</td>
+                    <td><x-ui.badge :variant="$type->allow_na ? 'info' : 'neutral'" size="sm">{{ $type->allow_na ? 'Ya' : 'Tidak' }}</x-ui.badge></td>
+                    @can('manage-master-data')
+                        <td class="eams:text-right">
+                            <form method="POST" action="{{ route('master-data.item-types.destroy', $type) }}" onsubmit="return confirm('Hapus item type ini?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="eams:inline-flex eams:min-h-8 eams:items-center eams:gap-1.5 eams:rounded-eams eams:border eams:border-danger/40 eams:bg-danger-soft eams:px-2.5 eams:text-xs eams:font-semibold eams:text-danger eams:transition-colors eams:hover:bg-danger eams:hover:text-white">Hapus</button>
+                            </form>
+                        </td>
+                    @endcan
+                </tr>
+            @empty
+                <tr><td colspan="6"><x-ui.empty-state icon="list-check" title="Belum ada item type" :boxed="false" /></td></tr>
+            @endforelse
         </tbody>
-    </table>
-</div></div>
+    </x-ui.table>
 
-{{ $itemTypes->links() }}
+    @if(method_exists($itemTypes, 'hasPages') && $itemTypes->hasPages())
+        <x-ui.pagination :paginator="$itemTypes" label="Navigasi halaman item type" />
+    @endif
+</div>
 @endsection

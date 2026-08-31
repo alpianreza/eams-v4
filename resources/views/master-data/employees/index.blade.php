@@ -1,58 +1,69 @@
 @extends('layouts.app')
 
-@section('title', 'Karyawan — Master Data')
+@section('title', 'Karyawan - Master Data')
 
 @section('content')
-<x-page-header
-    variant="card"
-    tone="utility"
-    eyebrow="Master Data"
-    eyebrow-icon="bi-people"
-    title="Karyawan"
-/>
+<div class="eams:mx-auto eams:max-w-5xl eams:space-y-4" data-eams-page="master-employees">
+    <x-ui.page-header eyebrow="Master Data" eyebrow-icon="people" title="Karyawan"
+                      lead="Data karyawan untuk assignment IT asset (BR-31/32)." />
 
-@can('manage-master-data')
-<div class="card mb-4"><div class="card-body">
-    <form method="POST" action="{{ route('master-data.employees.store') }}" class="row g-2">
-        @csrf
-        <div class="col-md-2"><input type="text" name="employee_id" class="form-control" placeholder="NIK" required></div>
-        <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Nama" required></div>
-        <div class="col-md-2"><input type="text" name="division" class="form-control" placeholder="Divisi" required></div>
-        <div class="col-md-2"><input type="text" name="position" class="form-control" placeholder="Jabatan" required></div>
-        <div class="col-md-2">
-            <select name="status" class="form-select"><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select>
-        </div>
-        <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">Tambah</button></div>
-    </form>
-</div></div>
-@endcan
+    @can('manage-master-data')
+        <x-ui.card>
+            <form method="POST" action="{{ route('master-data.employees.store') }}" class="eams:grid eams:gap-3 eams:md:grid-cols-4 eams:xl:grid-cols-5">
+                @csrf
+                <x-ui.input name="employee_id" label="NIK" required />
+                <x-ui.input name="name" label="Nama" required />
+                <x-ui.input name="division" label="Divisi" required />
+                <x-ui.input name="position" label="Jabatan" required />
+                <div class="eams:grid eams:gap-3 eams:md:col-span-2 eams:xl:col-span-1">
+                    <x-ui.select name="status" label="Status">
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Nonaktif</option>
+                    </x-ui.select>
+                </div>
+                <div class="eams:md:col-span-4 eams:xl:col-span-5">
+                    <x-ui.button type="submit" variant="primary" icon="plus-lg">Tambah</x-ui.button>
+                </div>
+            </form>
+        </x-ui.card>
+    @endcan
 
-<div class="card"><div class="card-body p-0">
-    <table class="table table-striped mb-0">
-        <thead><tr><th>NIK</th><th>Nama</th><th>Divisi</th><th>Jabatan</th><th>Status</th>@can('manage-master-data')<th class="text-end">Aksi</th>@endcan</tr></thead>
-        <tbody>
-        @forelse($employees as $employee)
+    <x-ui.table label="Daftar karyawan">
+        <thead>
             <tr>
-                <td><code>{{ $employee->employee_id }}</code></td>
-                <td>{{ $employee->name }}</td>
-                <td>{{ $employee->division }}</td>
-                <td>{{ $employee->position }}</td>
-                <td>{{ $employee->status === 'active' ? 'Aktif' : 'Nonaktif' }}</td>
-                @can('manage-master-data')
-                <td class="text-end">
-                    <form method="POST" action="{{ route('master-data.employees.destroy', $employee) }}" class="d-inline" onsubmit="return confirm('Hapus karyawan ini?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-                    </form>
-                </td>
-                @endcan
+                <th scope="col">NIK</th>
+                <th scope="col">Nama</th>
+                <th scope="col">Divisi</th>
+                <th scope="col">Jabatan</th>
+                <th scope="col">Status</th>
+                @can('manage-master-data')<th scope="col" class="eams:text-right">Aksi</th>@endcan
             </tr>
-        @empty
-            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada karyawan.</td></tr>
-        @endforelse
+        </thead>
+        <tbody>
+            @forelse($employees as $employee)
+                <tr wire:key="employee-{{ $employee->id }}">
+                    <td class="eams:font-mono eams:text-[13px] eams:text-muted">{{ $employee->employee_id }}</td>
+                    <td class="eams:text-[13px] eams:font-semibold eams:text-ink">{{ $employee->name }}</td>
+                    <td class="eams:text-[13px] eams:text-muted">{{ $employee->division }}</td>
+                    <td class="eams:text-[13px] eams:text-muted">{{ $employee->position }}</td>
+                    <td><x-ui.badge :variant="$employee->status === 'active' ? 'success' : 'neutral'" size="sm">{{ $employee->status === 'active' ? 'Aktif' : 'Nonaktif' }}</x-ui.badge></td>
+                    @can('manage-master-data')
+                        <td class="eams:text-right">
+                            <form method="POST" action="{{ route('master-data.employees.destroy', $employee) }}" onsubmit="return confirm('Hapus karyawan ini?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="eams:inline-flex eams:min-h-8 eams:items-center eams:gap-1.5 eams:rounded-eams eams:border eams:border-danger/40 eams:bg-danger-soft eams:px-2.5 eams:text-xs eams:font-semibold eams:text-danger eams:transition-colors eams:hover:bg-danger eams:hover:text-white">Hapus</button>
+                            </form>
+                        </td>
+                    @endcan
+                </tr>
+            @empty
+                <tr><td colspan="6"><x-ui.empty-state icon="people" title="Belum ada karyawan" :boxed="false" /></td></tr>
+            @endforelse
         </tbody>
-    </table>
-</div></div>
+    </x-ui.table>
 
-{{ $employees->links() }}
+    @if(method_exists($employees, 'hasPages') && $employees->hasPages())
+        <x-ui.pagination :paginator="$employees" label="Navigasi halaman karyawan" />
+    @endif
+</div>
 @endsection
